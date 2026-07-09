@@ -4,8 +4,9 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Store, Order, OrderStatus } from "@/lib/types";
 import { priceProduct, consumeStock, gbp, round2 } from "@/lib/pricing";
+import FinanceTab from "./FinanceTab";
 
-type Tab = "overview" | "orders" | "pricing" | "zones" | "content" | "settings";
+type Tab = "overview" | "orders" | "finance" | "pricing" | "zones" | "content" | "settings";
 
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
   "Order received": { bg: "#F3C6C6", color: "#4A2C4D" },
@@ -86,6 +87,7 @@ export default function AdminApp({
   const tabDefs: { id: Tab; label: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "orders", label: "Orders" },
+    { id: "finance", label: "Finance" },
     { id: "pricing", label: "Costs & pricing" },
     { id: "zones", label: "Delivery zones" },
     { id: "content", label: "Site content" },
@@ -280,6 +282,9 @@ export default function AdminApp({
             </div>
           </>
         )}
+
+        {/* FINANCE */}
+        {tab === "finance" && <FinanceTab store={store} setSetting={setSetting} />}
 
         {/* PRICING */}
         {tab === "pricing" && (

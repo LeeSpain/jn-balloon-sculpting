@@ -9,6 +9,11 @@ export interface Settings {
   depositType: DepositType;
   depositValue: number; // £ if fixed, % if percent
   refundDays: number; // working days before delivery
+  // Finance assumptions
+  taxRatePct: number; // income/corporation tax on profit before tax
+  vatRegistered: boolean; // treat customer prices as VAT-inclusive
+  vatRatePct: number; // VAT rate when registered
+  deliveryCostPct: number; // portion of delivery fee that is an actual cost
   stripePublishable: string;
   stripeSecret: string;
   instagram: string;

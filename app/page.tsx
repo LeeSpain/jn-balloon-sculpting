@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getRepository } from "@/lib/store";
 import { buildPublicData } from "@/lib/publicData";
+import { assetUrl } from "@/lib/assets";
 import QuoteBuilder from "@/components/QuoteBuilder";
 import { CopyButton } from "@/components/CopyButton";
 
@@ -134,7 +135,7 @@ export default async function HomePage({
                 style={{
                   aspectRatio: "1",
                   backgroundColor: "#F8EDE9",
-                  backgroundImage: `url('/${g.src}')`,
+                  backgroundImage: `url('${assetUrl(g.src)}')`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                 }}
