@@ -68,7 +68,7 @@ export default async function HomePage({
           borderBottom: "1px solid #F3C6C6",
         }}
       >
-        <div className="max-w-site mx-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-1" style={{ padding: "14px 20px" }}>
+        <div className="max-w-site mx-auto flex items-center justify-between gap-x-4" style={{ padding: "14px 20px" }}>
           <a href="#top" className="no-underline flex flex-col leading-none">
             <span className="font-display text-[26px] font-bold">
               J<span className="text-gold">&amp;</span>N
@@ -77,10 +77,11 @@ export default async function HomePage({
               BALLOON SCULPTING
             </span>
           </a>
-          <nav className="flex flex-wrap gap-x-4 gap-y-1 items-center justify-end font-bold text-sm">
-            <a href="#quote" className="no-underline inline-flex items-center min-h-[44px] px-1">Get a quote</a>
-            <a href="#gallery" className="no-underline inline-flex items-center min-h-[44px] px-1">Gallery</a>
-            <a href="#about" className="no-underline inline-flex items-center min-h-[44px] px-1">About</a>
+          <nav className="flex gap-x-4 items-center justify-end font-bold text-sm">
+            {/* Secondary links hidden on phones (one-page scroll); Book now always shows */}
+            <a href="#quote" className="no-underline hidden sm:inline-flex items-center min-h-[44px] px-1">Get a quote</a>
+            <a href="#gallery" className="no-underline hidden sm:inline-flex items-center min-h-[44px] px-1">Gallery</a>
+            <a href="#about" className="no-underline hidden sm:inline-flex items-center min-h-[44px] px-1">About</a>
             <a
               href="#quote"
               className="no-underline inline-flex items-center bg-coral-deep text-white rounded-full"
