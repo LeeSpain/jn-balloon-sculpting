@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; background: #FBF7F2; color: #4A2C4D; font-family: 'Nunito', sans-serif; }
+    a { color: #4A2C4D; }
+    a:hover { color: #FF6F61; }
+    input, select { font-family: 'Nunito', sans-serif; color: #4A2C4D; }
+  </style>
+</helmet>
+
+<header style="background: #4A2C4D; color: #FBF7F2;">
+  <div style="max-width: 1100px; margin: 0 auto; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+    <div style="display: flex; align-items: baseline; gap: 12px;">
+      <span style="font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700;">J<span style="color: #D4AF7A;">&amp;</span>N</span>
+      <span style="font-size: 12px; letter-spacing: 2px; font-weight: 800; color: #D4AF7A;">ADMIN</span>
+    </div>
+    <div style="display: flex; gap: 14px; align-items: center;">
+      <a href="J&N Website.dc.html" style="color: #F3C6C6; font-size: 13.5px; font-weight: 700; text-decoration: none;">View site →</a>
+      <button onClick="{{ resetData }}" style="cursor: pointer; background: transparent; border: 1px solid rgba(251,247,242,0.35); color: #FBF7F2; font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700; padding: 8px 14px; border-radius: 999px;">Reset demo data</button>
+    </div>
+  </div>
+</header>
+
+<nav style="background: #fff; border-bottom: 1px solid #F3C6C6; position: sticky; top: 0; z-index: 10;">
+  <div style="max-width: 1100px; margin: 0 auto; padding: 0 12px; display: flex; gap: 4px; overflow-x: auto;">
+    <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+      <button onClick="{{ t.select }}" style="cursor: pointer; background: none; border: none; border-bottom: 3px solid {{ t.line }}; color: {{ t.color }}; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 14px; padding: 14px 16px; white-space: nowrap; min-height: 48px;">{{ t.label }}</button>
+    </sc-for>
+  </div>
+</nav>
+
+<main style="max-width: 1100px; margin: 0 auto; padding: 28px 20px 64px;">
+
+  <sc-if value="{{ showOverview }}" hint-placeholder-val="{{ true }}">
+    <h1 style="font-family: 'Playfair Display', serif; font-size: 30px; margin: 0 0 4px;">{{ greeting }}</h1>
+    <p style="margin: 0 0 24px; color: #7a5f7d; font-size: 15px;">Here's how the business looks today.</p>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 28px;">
+      <sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
+        <div style="background: #fff; border-radius: 18px; padding: 20px; box-shadow: 0 4px 14px rgba(74,44,77,0.07);">
+          <p style="margin: 0 0 6px; font-size: 12px; letter-spacing: 1.5px; font-weight: 800; color: #D4AF7A;">{{ s.label }}</p>
+          <p style="margin: 0; font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 700; color: {{ s.color }};">{{ s.value }}</p>
+          <p style="margin: 4px 0 0; font-size: 12.5px; color: #7a5f7d;">{{ s.sub }}</p>
+        </div>
+      </sc-for>
+    </div>
+    <sc-if value="{{ hasAlerts }}" hint-placeholder-val="{{ false }}">
+      <div style="background: #FFF3F1; border: 2px solid #FF6F61; border-radius: 16px; padding: 16px 20px; margin-bottom: 28px;">
+        <p style="margin: 0 0 6px; font-weight: 800; font-size: 13px; letter-spacing: 1px; color: #FF6F61;">LOW STOCK</p>
+        <sc-for list="{{ alerts }}" as="a" hint-placeholder-count="1">
+          <p style="margin: 2px 0; font-size: 14px; font-weight: 600;">{{ a }}</p>
+        </sc-for>
+      </div>
+    </sc-if>
+    <h2 style="font-family: 'Playfair Display', serif; font-size: 22px; margin: 0 0 14px;">Upcoming deliveries</h2>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <sc-for list="{{ upcoming }}" as="o" hint-placeholder-count="3">
+        <div style="background: #fff; border-radius: 16px; padding: 16px 18px; box-shadow: 0 3px 10px rgba(74,44,77,0.06); display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;">
+          <div style="min-width: 90px;">
+            <p style="margin: 0; font-weight: 800; font-size: 15px;">{{ o.dateLabel }}</p>
+            <p style="margin: 2px 0 0; font-size: 12px; color: #7a5f7d;">{{ o.id }}</p>
+          </div>
+          <div style="flex: 1; min-width: 180px;">
+            <p style="margin: 0; font-weight: 700; font-size: 14.5px;">{{ o.productName }} · {{ o.customer }}</p>
+            <p style="margin: 2px 0 0; font-size: 12.5px; color: #7a5f7d;">{{ o.postcode }} · {{ o.theme }}</p>
+          </div>
+          <span style="font-size: 12px; font-weight: 800; padding: 6px 12px; border-radius: 999px; background: {{ o.statusBg }}; color: {{ o.statusColor }};">{{ o.status }}</span>
+          <span style="font-weight: 800; font-size: 15px; color: #FF6F61;">{{ o.total }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showOrders }}" hint-placeholder-val="{{ false }}">
+    <h1 style="font-family: 'Playfair Display', serif; font-size: 30px; margin: 0 0 4px;">Orders</h1>
+    <p style="margin: 0 0 24px; color: #7a5f7d; font-size: 15px;">Order received → Materials purchased → In progress → Ready → Delivered</p>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <sc-for list="{{ orderRows }}" as="o" hint-placeholder-count="4">
+        <div style="background: #fff; border-radius: 16px; padding: 18px 20px; box-shadow: 0 3px 10px rgba(74,44,77,0.06); display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; align-items: center;">
+          <div>
+            <p style="margin: 0; font-weight: 800; font-size: 15px;">{{ o.customer }}</p>
+            <p style="margin: 2px 0 0; font-size: 12.5px; color: #7a5f7d;">{{ o.id }} · {{ o.phone }}</p>
+          </div>
+          <div>
+            <p style="margin: 0; font-weight: 700; font-size: 14px;">{{ o.productName }} ({{ o.sizeName }})</p>
+            <p style="margin: 2px 0 0; font-size: 12.5px; color: #7a5f7d;">{{ o.theme }}</p>
+          </div>
+          <div>
+            <p style="margin: 0; font-weight: 700; font-size: 14px;">{{ o.dateLabel }}</p>
+            <p style="margin: 2px 0 0; font-size: 12.5px; color: #7a5f7d;">{{ o.address }} {{ o.postcode }}</p>
+          </div>
+          <div>
+            <p style="margin: 0; font-weight: 800; font-size: 15px; color: #FF6F61;">{{ o.total }}</p>
+            <p style="margin: 2px 0 0; font-size: 12.5px; color: {{ o.profitColor }}; font-weight: 700;">profit {{ o.profit }}</p>
+            <p style="margin: 2px 0 0; font-size: 12px; color: {{ o.paidColor }}; font-weight: 700;">{{ o.paidLabel }}</p>
+          </div>
+          <select value="{{ o.status }}" onChange="{{ o.setStatus }}" style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 12px; font-size: 13.5px; font-weight: 700; background: #FBF7F2; min-height: 44px;">
+            <option>Order received</option>
+            <option>Materials purchased</option>
+            <option>In progress</option>
+            <option>Ready</option>
+            <option>Delivered</option>
+          </select>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showPricing }}" hint-placeholder-val="{{ false }}">
+    <h1 style="font-family: 'Playfair Display', serif; font-size: 30px; margin: 0 0 4px;">Costs &amp; pricing</h1>
+    <p style="margin: 0 0 24px; color: #7a5f7d; font-size: 15px;">Change any cost here and every future quote updates automatically.</p>
+
+    <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 28px;">
+      <label style="background: #fff; border-radius: 16px; padding: 16px 18px; box-shadow: 0 3px 10px rgba(74,44,77,0.06); display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; font-weight: 800; letter-spacing: 1px; color: #D4AF7A;">LABOUR RATE (£/HR)
+        <input type="number" step="0.5" value="{{ labourRate }}" onChange="{{ setLabourRate }}" style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 12px; font-size: 17px; font-weight: 800; width: 110px; background: #FBF7F2;">
+      </label>
+      <label style="background: #fff; border-radius: 16px; padding: 16px 18px; box-shadow: 0 3px 10px rgba(74,44,77,0.06); display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; font-weight: 800; letter-spacing: 1px; color: #D4AF7A;">MARKUP (%)
+        <input type="number" step="5" value="{{ markupPct }}" onChange="{{ setMarkup }}" style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 12px; font-size: 17px; font-weight: 800; width: 110px; background: #FBF7F2;">
+      </label>
+    </div>
+
+    <h2 style="font-family: 'Playfair Display', serif; font-size: 22px; margin: 0 0 14px;">Materials</h2>
+    <div style="background: #fff; border-radius: 18px; box-shadow: 0 3px 10px rgba(74,44,77,0.06); padding: 8px 18px; margin-bottom: 28px;">
+      <sc-for list="{{ materialRows }}" as="m" hint-placeholder-count="8">
+        <div style="display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid #FBF7F2; flex-wrap: wrap;">
+          <span style="flex: 1; min-width: 180px; font-weight: 700; font-size: 14.5px;">{{ m.name }}</span>
+          <span style="font-size: 12.5px; color: #7a5f7d; width: 70px;">per {{ m.unit }}</span>
+          <span style="display: flex; align-items: center; gap: 4px; font-weight: 800;">£<input type="number" step="0.1" value="{{ m.cost }}" onChange="{{ m.setCost }}" style="border: 2px solid #F3C6C6; border-radius: 10px; padding: 8px 10px; font-size: 15px; font-weight: 700; width: 76px; background: #FBF7F2;"></span>
+          <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: {{ m.stockColor }};">stock
+            <input type="number" step="0.5" value="{{ m.stock }}" onChange="{{ m.setStock }}" style="border: 2px solid {{ m.stockBorder }}; border-radius: 10px; padding: 8px 10px; font-size: 14px; font-weight: 700; width: 62px; background: #FBF7F2;">
+          </span>
+        </div>
+      </sc-for>
+    </div>
+
+    <h2 style="font-family: 'Playfair Display', serif; font-size: 22px; margin: 0 0 14px;">Products — cost vs price vs profit</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px;">
+      <sc-for list="{{ productRows }}" as="p" hint-placeholder-count="6">
+        <div style="background: #fff; border-radius: 18px; padding: 20px; box-shadow: 0 3px 10px rgba(74,44,77,0.06);">
+          <p style="margin: 0 0 2px; font-weight: 800; font-size: 16px;">{{ p.name }}</p>
+          <p style="margin: 0 0 12px; font-size: 12px; color: #7a5f7d;">{{ p.fillLabel }}</p>
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; margin-bottom: 12px;">Build time (hrs)
+            <input type="number" step="0.25" value="{{ p.buildHours }}" onChange="{{ p.setHours }}" style="border: 2px solid #F3C6C6; border-radius: 10px; padding: 7px 10px; font-size: 14px; font-weight: 700; width: 64px; background: #FBF7F2;">
+          </label>
+          <div style="display: flex; justify-content: space-between; font-size: 13.5px; padding: 4px 0;"><span style="color: #7a5f7d;">Materials</span><span style="font-weight: 700;">{{ p.materials }}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 13.5px; padding: 4px 0;"><span style="color: #7a5f7d;">Labour</span><span style="font-weight: 700;">{{ p.labour }}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 13.5px; padding: 4px 0; border-top: 1px solid #FBF7F2;"><span style="color: #7a5f7d;">Customer price</span><span style="font-weight: 800; color: #FF6F61;">{{ p.price }}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 13.5px; padding: 4px 0;"><span style="color: #7a5f7d;">Profit</span><span style="font-weight: 800; color: #3c7a3c;">{{ p.profit }}</span></div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showZones }}" hint-placeholder-val="{{ false }}">
+    <h1 style="font-family: 'Playfair Display', serif; font-size: 30px; margin: 0 0 4px;">Delivery zones</h1>
+    <p style="margin: 0 0 24px; color: #7a5f7d; font-size: 15px;">Measured from your base between Huntingdon and Stilton. Postcodes outside all zones route to a custom enquiry.</p>
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+      <sc-for list="{{ zoneRows }}" as="z" hint-placeholder-count="3">
+        <div style="background: #fff; border-radius: 16px; padding: 18px 20px; box-shadow: 0 3px 10px rgba(74,44,77,0.06); display: flex; flex-wrap: wrap; gap: 14px; align-items: center;">
+          <div style="min-width: 130px;">
+            <p style="margin: 0; font-weight: 800; font-size: 15.5px;">{{ z.name }}</p>
+            <p style="margin: 2px 0 0; font-size: 12.5px; color: #7a5f7d;">{{ z.range }}</p>
+          </div>
+          <p style="flex: 1; min-width: 200px; margin: 0; font-size: 13px; color: #7a5f7d;">{{ z.areas }}<br><span style="font-family: monospace; font-size: 11.5px;">{{ z.districtList }}</span></p>
+          <label style="display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 15px;">£<input type="number" step="1" value="{{ z.fee }}" onChange="{{ z.setFee }}" style="border: 2px solid #F3C6C6; border-radius: 10px; padding: 9px 11px; font-size: 15px; font-weight: 800; width: 70px; background: #FBF7F2;"></label>
+        </div>
+      </sc-for>
+    </div>
+    <div style="background: #FBF7F2; border: 2px dashed #D4AF7A; border-radius: 16px; padding: 16px 20px; font-size: 13.5px; font-weight: 600; color: #7a5f7d;">Beyond 30 miles → "quote on request" (routed to you as an enquiry). Per-mile pricing (~£1/mile each way) coming in a later phase.</div>
+  </sc-if>
+
+  <sc-if value="{{ showContent }}" hint-placeholder-val="{{ false }}">
+    <h1 style="font-family: 'Playfair Display', serif; font-size: 30px; margin: 0 0 4px;">Site content</h1>
+    <p style="margin: 0 0 24px; color: #7a5f7d; font-size: 15px;">Gallery, reviews and colour themes — changes appear on the website straight away.</p>
+
+    <h2 style="font-family: 'Playfair Display', serif; font-size: 22px; margin: 0 0 14px;">Gallery</h2>
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px;">
+      <sc-for list="{{ galleryAdmin }}" as="g" hint-placeholder-count="0">
+        <div style="background: #fff; border-radius: 16px; padding: 12px 16px; box-shadow: 0 3px 10px rgba(74,44,77,0.06); display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+          <div style="width: 56px; height: 56px; border-radius: 12px; background-color: #F8EDE9; background-image: url('{{ g.src }}'); background-size: cover; background-position: center;"></div>
+          <input value="{{ g.title }}" onChange="{{ g.setTitle }}" style="flex: 1; min-width: 160px; border: 2px solid #F3C6C6; border-radius: 10px; padding: 9px 12px; font-size: 14px; font-weight: 700; background: #FBF7F2;">
+          <select value="{{ g.src }}" onChange="{{ g.setSrc }}" style="border: 2px solid #F3C6C6; border-radius: 10px; padding: 9px 10px; font-size: 12.5px; background: #FBF7F2; max-width: 210px; min-height: 42px;">
+            <sc-for list="{{ imageOptions }}" as="io" hint-placeholder-count="0">
+              <option value="{{ io.value }}">{{ io.label }}</option>
+            </sc-for>
+          </select>
+          <div style="display: flex; gap: 6px;">
+            <button onClick="{{ g.moveUp }}" title="Move up" style="cursor: pointer; border: none; background: #FBF7F2; border-radius: 10px; padding: 9px 12px; font-weight: 800; min-height: 40px;">↑</button>
+            <button onClick="{{ g.moveDown }}" title="Move down" style="cursor: pointer; border: none; background: #FBF7F2; border-radius: 10px; padding: 9px 12px; font-weight: 800; min-height: 40px;">↓</button>
+            <button onClick="{{ g.remove }}" title="Remove" style="cursor: pointer; border: none; background: #FFE3DF; color: #c14a3e; border-radius: 10px; padding: 9px 12px; font-weight: 800; min-height: 40px;">✕</button>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <button onClick="{{ addGalleryItem }}" style="cursor: pointer; background: #4A2C4D; color: #fff; border: none; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13.5px; padding: 11px 20px; border-radius: 999px; margin-bottom: 32px; min-height: 44px;">+ Add gallery item</button>
+    <p style="margin: -22px 0 32px; font-size: 12.5px; color: #7a5f7d;">New items use your existing artwork — drop real photos into the project and they'll be selectable here.</p>
+
+    <h2 style="font-family: 'Playfair Display', serif; font-size: 22px; margin: 0 0 14px;">Customer reviews</h2>
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px;">
+      <sc-for list="{{ reviewsAdmin }}" as="r" hint-placeholder-count="0">
+        <div style="background: #fff; border-radius: 16px; padding: 14px 16px; box-shadow: 0 3px 10px rgba(74,44,77,0.06); display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+          <input value="{{ r.text }}" onChange="{{ r.setText }}" placeholder="Review text" style="flex: 2 1 260px; border: 2px solid #F3C6C6; border-radius: 10px; padding: 9px 12px; font-size: 13.5px; background: #FBF7F2;">
+          <input value="{{ r.name }}" onChange="{{ r.setName }}" placeholder="Name" style="flex: 1 1 110px; border: 2px solid #F3C6C6; border-radius: 10px; padding: 9px 12px; font-size: 13.5px; font-weight: 700; background: #FBF7F2;">
+          <input value="{{ r.event }}" onChange="{{ r.setEvent }}" placeholder="Event, town" style="flex: 1 1 140px; border: 2px solid #F3C6C6; border-radius: 10px; padding: 9px 12px; font-size: 13.5px; background: #FBF7F2;">
+          <button onClick="{{ r.remove }}" title="Remove" style="cursor: pointer; border: none; background: #FFE3DF; color: #c14a3e; border-radius: 10px; padding: 9px 12px; font-weight: 800; min-height: 40px;">✕</button>
+        </div>
+      </sc-for>
+    </div>
+    <button onClick="{{ addReview }}" style="cursor: pointer; background: #4A2C4D; color: #fff; border: none; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13.5px; padding: 11px 20px; border-radius: 999px; margin-bottom: 32px; min-height: 44px;">+ Add review</button>
+
+    <h2 style="font-family: 'Playfair Display', serif; font-size: 22px; margin: 0 0 14px;">Colour themes (quote builder)</h2>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px;">
+      <sc-for list="{{ themeAdmin }}" as="t" hint-placeholder-count="0">
+        <span style="display: flex; align-items: center; gap: 8px; background: #fff; border: 2px solid #F3C6C6; border-radius: 999px; padding: 8px 8px 8px 16px; font-weight: 700; font-size: 13.5px;">{{ t.name }}
+          <button onClick="{{ t.remove }}" title="Remove" style="cursor: pointer; border: none; background: #FFE3DF; color: #c14a3e; border-radius: 999px; width: 26px; height: 26px; font-weight: 800;">✕</button>
+        </span>
+      </sc-for>
+    </div>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <input value="{{ newTheme }}" onChange="{{ setNewTheme }}" placeholder="New theme, e.g. Silver & white" style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 14px; font-size: 14px; background: #FBF7F2; min-width: 220px;">
+      <button onClick="{{ addTheme }}" style="cursor: pointer; background: #4A2C4D; color: #fff; border: none; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13.5px; padding: 11px 20px; border-radius: 999px; min-height: 44px;">+ Add theme</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showFinance }}" hint-placeholder-val="{{ false }}">
+    <h1 style="font-family: 'Playfair Display', serif; font-size: 30px; margin: 0 0 4px;">Finance</h1>
+    <p style="margin: 0 0 20px; color: #7a5f7d; font-size: 15px;">What you've earned, what to set aside for the taxman, and what's safe to take out — each.</p>
+
+    <label style="display: inline-flex; align-items: center; gap: 10px; background: #fff; border-radius: 999px; padding: 10px 18px; box-shadow: 0 3px 10px rgba(74,44,77,0.06); font-size: 13.5px; font-weight: 700; cursor: pointer; margin-bottom: 22px;">
+      <input type="checkbox" checked="{{ finPipeline }}" onChange="{{ setFinPipeline }}" style="width: 18px; height: 18px; accent-color: #FF6F61;">
+      Include upcoming booked orders (not just delivered)
+    </label>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 22px;">
+      <div style="background: #fff; border-radius: 18px; padding: 20px; box-shadow: 0 4px 14px rgba(74,44,77,0.07);">
+        <p style="margin: 0 0 6px; font-size: 12px; letter-spacing: 1.5px; font-weight: 800; color: #D4AF7A;">MONEY IN</p>
+        <p style="margin: 0; font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700;">{{ finRevenue }}</p>
+        <p style="margin: 4px 0 0; font-size: 12.5px; color: #7a5f7d;">{{ finScopeLabel }}</p>
+      </div>
+      <div style="background: #fff; border-radius: 18px; padding: 20px; box-shadow: 0 4px 14px rgba(74,44,77,0.07);">
+        <p style="margin: 0 0 6px; font-size: 12px; letter-spacing: 1.5px; font-weight: 800; color: #D4AF7A;">MATERIALS SPENT</p>
+        <p style="margin: 0; font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700; color: #c14a3e;">{{ finMaterials }}</p>
+        <p style="margin: 4px 0 0; font-size: 12.5px; color: #7a5f7d;">your only deductible cost for now</p>
+      </div>
+      <div style="background: #4A2C4D; border-radius: 18px; padding: 20px; box-shadow: 0 4px 14px rgba(74,44,77,0.2);">
+        <p style="margin: 0 0 6px; font-size: 12px; letter-spacing: 1.5px; font-weight: 800; color: #D4AF7A;">PROFIT BEFORE TAX</p>
+        <p style="margin: 0; font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700; color: #FBF7F2;">{{ finProfit }}</p>
+        <p style="margin: 4px 0 0; font-size: 12.5px; color: #F3C6C6;">split {{ finSplitLabel }}</p>
+      </div>
+    </div>
+
+    <div style="background: #FBF7F2; border: 2px dashed #D4AF7A; border-radius: 16px; padding: 16px 20px; margin-bottom: 22px; font-size: 13.5px; color: #7a5f7d; line-height: 1.55;">
+      <strong style="color: #4A2C4D;">Why is this more than the "profit" on orders?</strong> Your build time isn't a business expense — as sole traders your labour is part of your profit, so HMRC taxes it. The pricing engine pays you for your time; the taxman just sees it all as earnings.
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 26px;">
+      <sc-for list="{{ finPartners }}" as="p" hint-placeholder-count="2">
+        <div style="background: #fff; border-radius: 18px; padding: 22px; box-shadow: 0 4px 14px rgba(74,44,77,0.07);">
+          <p style="margin: 0 0 14px; font-family: 'Playfair Display', serif; font-size: 21px; font-weight: 700;">{{ p.name }}</p>
+          <div style="display: flex; justify-content: space-between; font-size: 14px; padding: 5px 0;"><span style="color: #7a5f7d;">Share of profit</span><span style="font-weight: 700;">{{ p.share }}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 14px; padding: 5px 0;"><span style="color: #7a5f7d;">Tax-free allowance used</span><span style="font-weight: 700;">{{ p.allowanceUsed }}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 14px; padding: 5px 0;"><span style="color: #7a5f7d;">Income tax ({{ p.taxRate }})</span><span style="font-weight: 700;">{{ p.tax }}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 14px; padding: 5px 0;"><span style="color: #7a5f7d;">National Insurance ({{ p.niRate }})</span><span style="font-weight: 700;">{{ p.ni }}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 14px; padding: 8px 0 5px; border-top: 1px solid #FBF7F2;"><span style="font-weight: 800; color: #c14a3e;">Set aside for HMRC</span><span style="font-weight: 800; color: #c14a3e;">{{ p.setAside }}</span></div>
+          <div style="margin-top: 12px; background: #F0F7F0; border-radius: 14px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: baseline;">
+            <span style="font-weight: 800; font-size: 13px; color: #3c5a3c;">SAFE TO TAKE OUT</span>
+            <span style="font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; color: #3c7a3c;">{{ p.takeHome }}</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <h2 style="font-family: 'Playfair Display', serif; font-size: 22px; margin: 0 0 14px;">Assumptions (edit to match your situation)</h2>
+    <div style="background: #fff; border-radius: 18px; padding: 20px 22px; box-shadow: 0 3px 10px rgba(74,44,77,0.06); display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 14px;">
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 800; letter-spacing: 1px; color: #D4AF7A;">JADE'S SHARE (%)
+        <input type="number" min="0" max="100" value="{{ finSplitPct }}" onChange="{{ setFinSplit }}" style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 12px; font-size: 16px; font-weight: 800; width: 90px; background: #FBF7F2;">
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 800; letter-spacing: 1px; color: #D4AF7A;">PERSONAL ALLOWANCE (£/YR EACH)
+        <input type="number" step="10" value="{{ finAllowance }}" onChange="{{ setFinAllowance }}" style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 12px; font-size: 16px; font-weight: 800; width: 120px; background: #FBF7F2;">
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 800; letter-spacing: 1px; color: #D4AF7A;">INCOME TAX (%)
+        <input type="number" step="1" value="{{ finTaxRate }}" onChange="{{ setFinTaxRate }}" style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 12px; font-size: 16px; font-weight: 800; width: 90px; background: #FBF7F2;">
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 800; letter-spacing: 1px; color: #D4AF7A;">CLASS 4 NI (%)
+        <input type="number" step="1" value="{{ finNiRate }}" onChange="{{ setFinNiRate }}" style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 12px; font-size: 16px; font-weight: 800; width: 90px; background: #FBF7F2;">
+      </label>
+    </div>
+    <p style="margin: 0; font-size: 12.5px; color: #7a5f7d;">{{ finNote }} These are planning estimates, not accountancy advice — the allowance is shared with any other income you each have (jobs, benefits), so do register as sole traders and check with HMRC or an accountant.</p>
+  </sc-if>
+
+  <sc-if value="{{ showSettings }}" hint-placeholder-val="{{ false }}">
+    <h1 style="font-family: 'Playfair Display', serif; font-size: 30px; margin: 0 0 24px;">Settings</h1>
+
+    <div style="background: #fff; border-radius: 18px; padding: 22px; box-shadow: 0 3px 10px rgba(74,44,77,0.06); margin-bottom: 18px;">
+      <h2 style="font-family: 'Playfair Display', serif; font-size: 20px; margin: 0 0 14px;">Bookings</h2>
+      <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 800; letter-spacing: 1px; color: #D4AF7A;">MINIMUM NOTICE (DAYS)
+          <input type="number" value="{{ leadDays }}" onChange="{{ setLeadDays }}" style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 12px; font-size: 16px; font-weight: 800; width: 100px; background: #FBF7F2;">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 800; letter-spacing: 1px; color: #D4AF7A;">DEPOSIT TYPE
+          <select value="{{ depositType }}" onChange="{{ setDepositType }}" style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 12px; font-size: 14.5px; font-weight: 700; background: #FBF7F2; min-height: 46px;">
+            <option value="full">Full payment upfront</option>
+            <option value="fixed">Fixed deposit (£)</option>
+            <option value="percent">Percentage deposit (%)</option>
+          </select>
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 800; letter-spacing: 1px; color: #D4AF7A;">{{ depositValueLabel }}
+          <input type="number" value="{{ depositValue }}" onChange="{{ setDepositValue }}" style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 12px; font-size: 16px; font-weight: 800; width: 100px; background: #FBF7F2;">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 800; letter-spacing: 1px; color: #D4AF7A;">REFUNDABLE UNTIL (WORKING DAYS BEFORE)
+          <input type="number" value="{{ refundDays }}" onChange="{{ setRefundDays }}" style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 12px; font-size: 16px; font-weight: 800; width: 100px; background: #FBF7F2;">
+        </label>
+      </div>
+    </div>
+
+    <div style="background: #fff; border-radius: 18px; padding: 22px; box-shadow: 0 3px 10px rgba(74,44,77,0.06); margin-bottom: 18px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+        <h2 style="font-family: 'Playfair Display', serif; font-size: 20px; margin: 0;">Payments — Stripe</h2>
+        <span style="font-size: 12px; font-weight: 800; padding: 5px 12px; border-radius: 999px; background: {{ stripeBg }}; color: {{ stripeColor }};">{{ stripeStatus }}</span>
+      </div>
+      <p style="margin: 0 0 16px; font-size: 13.5px; color: #7a5f7d;">Paste your keys from <span style="font-family: monospace;">dashboard.stripe.com → Developers → API keys</span>. Until connected, the site takes bookings as "pay on confirmation" enquiries.</p>
+      <div style="display: flex; flex-direction: column; gap: 12px; max-width: 520px;">
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 800; letter-spacing: 1px; color: #D4AF7A;">PUBLISHABLE KEY
+          <input value="{{ stripePublishable }}" onChange="{{ setStripePub }}" placeholder="pk_live_..." style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 12px; font-size: 14px; font-family: monospace; background: #FBF7F2;">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 800; letter-spacing: 1px; color: #D4AF7A;">SECRET KEY
+          <input type="password" value="{{ stripeSecret }}" onChange="{{ setStripeSec }}" placeholder="sk_live_..." style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 12px; font-size: 14px; font-family: monospace; background: #FBF7F2;">
+        </label>
+      </div>
+    </div>
+
+    <div style="background: #fff; border-radius: 18px; padding: 22px; box-shadow: 0 3px 10px rgba(74,44,77,0.06);">
+      <h2 style="font-family: 'Playfair Display', serif; font-size: 20px; margin: 0 0 6px;">Social links</h2>
+      <p style="margin: 0 0 16px; font-size: 13.5px; color: #7a5f7d;">Icons appear on the site automatically once a link is added — hidden while empty.</p>
+      <div style="display: flex; flex-direction: column; gap: 12px; max-width: 520px;">
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 800; letter-spacing: 1px; color: #D4AF7A;">INSTAGRAM
+          <input value="{{ instagram }}" onChange="{{ setInstagram }}" placeholder="https://instagram.com/jnballoons" style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 12px; font-size: 14px; background: #FBF7F2;">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 800; letter-spacing: 1px; color: #D4AF7A;">FACEBOOK
+          <input value="{{ facebook }}" onChange="{{ setFacebook }}" placeholder="https://facebook.com/jnballoons" style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 12px; font-size: 14px; background: #FBF7F2;">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 800; letter-spacing: 1px; color: #D4AF7A;">TIKTOK
+          <input value="{{ tiktok }}" onChange="{{ setTiktok }}" placeholder="https://tiktok.com/@jnballoons" style="border: 2px solid #F3C6C6; border-radius: 12px; padding: 10px 12px; font-size: 14px; background: #FBF7F2;">
+        </label>
+      </div>
+    </div>
+  </sc-if>
+
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { store: null, tab: 'overview', newTheme: '', finPipeline: true };
+
+  async componentDidMount() {
+    this.engine = await import('./engine.js');
+    this.setState({ store: this.engine.getStore() });
+  }
+
+  save(store) {
+    this.engine.saveStore(store);
+    this.setState({ store });
+  }
+
+  setSetting(key, value) {
+    const store = this.state.store;
+    store.settings[key] = value;
+    this.save(store);
+  }
+
+  renderVals() {
+    const st = this.state;
+    const store = st.store;
+    const eng = this.engine;
+
+    const tabDefs = [
+      { id: 'overview', label: 'Overview' },
+      { id: 'orders', label: 'Orders' },
+      { id: 'pricing', label: 'Costs & pricing' },
+      { id: 'zones', label: 'Delivery zones' },
+      { id: 'content', label: 'Site content' },
+      { id: 'finance', label: 'Finance' },
+      { id: 'settings', label: 'Settings' }
+    ];
+    const tabs = tabDefs.map(t => ({
+      label: t.label,
+      line: t.id === st.tab ? '#FF6F61' : 'transparent',
+      color: t.id === st.tab ? '#4A2C4D' : '#9a839c',
+      select: () => this.setState({ tab: t.id })
+    }));
+
+    const base = {
+      tabs,
+      showOverview: st.tab === 'overview',
+      showOrders: st.tab === 'orders',
+      showPricing: st.tab === 'pricing',
+      showZones: st.tab === 'zones',
+      showContent: st.tab === 'content',
+      showFinance: st.tab === 'finance',
+      showSettings: st.tab === 'settings',
+      resetData: () => this.save(this.engine ? this.engine.resetStore() : null)
+    };
+
+    if (!store) {
+      return { ...base, greeting: 'Loading…', stats: [], upcoming: [], hasAlerts: false, alerts: [],
+        orderRows: [], materialRows: [], productRows: [], zoneRows: [],
+        galleryAdmin: [], reviewsAdmin: [], themeAdmin: [], imageOptions: [], newTheme: '',
+        addGalleryItem: () => {}, addReview: () => {}, addTheme: () => {}, setNewTheme: () => {},
+        finPipeline: true, setFinPipeline: () => {}, finRevenue: '\u2014', finMaterials: '\u2014', finProfit: '\u2014',
+        finScopeLabel: '', finSplitLabel: '', finPartners: [], finNote: '',
+        finSplitPct: 50, finAllowance: 12570, finTaxRate: 20, finNiRate: 6,
+        setFinSplit: () => {}, setFinAllowance: () => {}, setFinTaxRate: () => {}, setFinNiRate: () => {},
+        resetData: () => {} };
+    }
+
+    const statusStyles = {
+      'Order received':      { bg: '#F3C6C6', color: '#4A2C4D' },
+      'Materials purchased': { bg: '#F2E7D8', color: '#8a6a3a' },
+      'In progress':         { bg: '#FFE3DF', color: '#c14a3e' },
+      'Ready':               { bg: '#E4F0E4', color: '#3c7a3c' },
+      'Delivered':           { bg: '#EDEAEE', color: '#7a5f7d' }
+    };
+
+    const productById = id => store.products.find(p => p.id === id);
+    const sizeById = id => store.sizes.find(s => s.id === id) || { name: 'Standard', mult: 1 };
+
+    const orderView = o => {
+      const p = productById(o.product) || { name: o.product };
+      const sz = sizeById(o.size);
+      const cost = p.recipe ? eng.priceProduct(store, p, sz.mult).cost : 0;
+      const profit = o.price - cost;
+      const ss = statusStyles[o.status] || statusStyles['Order received'];
+      return {
+        ...o,
+        productName: p.name,
+        sizeName: sz.name,
+        dateLabel: new Date(o.date + 'T12:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }),
+        total: eng.gbp(o.price + (o.delivery || 0)),
+        profit: eng.gbp(Math.round(profit)),
+        profitColor: profit > 0 ? '#3c7a3c' : '#c14a3e',
+        paidLabel: o.depositPaid
+          ? 'paid ' + eng.gbp(o.depositPaid) + (o.depositPaid >= o.price + (o.delivery || 0) ? ' · paid in full' : ' · due ' + eng.gbp(eng.round2(o.price + (o.delivery || 0) - o.depositPaid)))
+          : 'nothing paid yet',
+        paidColor: o.depositPaid ? '#3c7a3c' : '#b0862a',
+        statusBg: ss.bg,
+        statusColor: ss.color,
+        setStatus: (e) => {
+          const next = e.target.value;
+          if (next === 'Materials purchased' && !o.stockTaken) {
+            eng.consumeStock(store, o.product, o.size);
+            o.stockTaken = true;
+          }
+          o.status = next;
+          this.save(store);
+        }
+      };
+    };
+
+    const active = store.orders.filter(o => o.status !== 'Delivered');
+    const upcoming = active.slice().sort((a, b) => a.date.localeCompare(b.date)).map(orderView);
+    const orderRows = store.orders.slice().sort((a, b) => a.date.localeCompare(b.date)).map(orderView);
+
+    const revenue = active.reduce((s, o) => s + o.price + (o.delivery || 0), 0);
+    const profitSum = active.reduce((s, o) => {
+      const p = productById(o.product);
+      const sz = sizeById(o.size);
+      return s + (o.price - (p && p.recipe ? eng.priceProduct(store, p, sz.mult).cost : 0)) + (o.delivery || 0) * 0.5;
+    }, 0);
+
+    const hour = new Date().getHours();
+    const greeting = (hour < 12 ? 'Morning' : hour < 18 ? 'Afternoon' : 'Evening') + ', Jade & Nicole';
+
+    const stats = [
+      { label: 'OPEN ORDERS', value: String(active.length), sub: 'not yet delivered', color: '#4A2C4D' },
+      { label: 'BOOKED REVENUE', value: eng.gbp(revenue), sub: 'incl. delivery', color: '#4A2C4D' },
+      { label: 'EXPECTED PROFIT', value: eng.gbp(Math.round(profitSum)), sub: 'after materials & labour', color: '#3c7a3c' },
+      { label: 'NEXT DELIVERY', value: upcoming.length ? upcoming[0].dateLabel : '—', sub: upcoming.length ? upcoming[0].productName : 'nothing booked', color: '#FF6F61' }
+    ];
+
+    const alerts = store.materials
+      .filter(m => m.stock != null && m.lowAt != null && m.stock <= m.lowAt)
+      .map(m => m.name + ' running low (' + m.stock + ' left) — time to reorder.');
+
+    const materialRows = store.materials.map(m => {
+      const low = m.stock != null && m.stock <= (m.lowAt ?? 0);
+      return {
+        name: m.name, unit: m.unit, cost: m.cost,
+        stock: m.stock ?? 0,
+        stockColor: low ? '#c14a3e' : '#7a5f7d',
+        stockBorder: low ? '#FF6F61' : '#F3C6C6',
+        setCost: (e) => { m.cost = parseFloat(e.target.value) || 0; this.save(store); },
+        setStock: (e) => { m.stock = parseFloat(e.target.value) || 0; this.save(store); }
+      };
+    });
+
+    const productRows = store.products.map(p => {
+      const q = eng.priceProduct(store, p, 1);
+      return {
+        name: p.name,
+        fillLabel: p.fill === 'helium' ? 'Helium-filled · same-day delivery only' : 'Air-filled · lasts 2–3 weeks',
+        buildHours: p.buildHours,
+        materials: eng.gbp(q.materials),
+        labour: eng.gbp(q.labour),
+        price: eng.gbp(q.price),
+        profit: eng.gbp(eng.round2(q.price - q.cost)),
+        setHours: (e) => { p.buildHours = parseFloat(e.target.value) || 0; this.save(store); }
+      };
+    });
+
+    const zoneRows = store.zones.map(z => ({
+      name: z.name, range: z.range, areas: z.areas, fee: z.fee,
+      districtList: (z.districts || []).join(' · '),
+      setFee: (e) => { z.fee = parseFloat(e.target.value) || 0; this.save(store); }
+    }));
+
+    // --- site content tab ---
+    if (!store.gallery) store.gallery = [];
+    if (!store.reviews) store.reviews = [];
+    const imageOptions = (store.galleryImages || []).map(src => ({
+      value: src,
+      label: src.replace('images/', '').replace('.png', '').replace('gallery-', '')
+    }));
+    const swap = (arr, i, j) => { if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; this.save(store); };
+    const galleryAdmin = store.gallery.map((g, i) => ({
+      title: g.title, src: g.src,
+      setTitle: (e) => { g.title = e.target.value; this.save(store); },
+      setSrc: (e) => { g.src = e.target.value; this.save(store); },
+      moveUp: () => swap(store.gallery, i, i - 1),
+      moveDown: () => swap(store.gallery, i, i + 1),
+      remove: () => { store.gallery.splice(i, 1); this.save(store); }
+    }));
+    const reviewsAdmin = store.reviews.map((r, i) => ({
+      text: r.text, name: r.name, event: r.event,
+      setText: (e) => { r.text = e.target.value; this.save(store); },
+      setName: (e) => { r.name = e.target.value; this.save(store); },
+      setEvent: (e) => { r.event = e.target.value; this.save(store); },
+      remove: () => { store.reviews.splice(i, 1); this.save(store); }
+    }));
+    const themeAdmin = store.themes.map((t, i) => ({
+      name: t,
+      remove: () => { store.themes.splice(i, 1); this.save(store); }
+    }));
+
+    // --- finance tab ---
+    const s = store.settings;
+    const finScope = store.orders.filter(o => st.finPipeline || o.status === 'Delivered');
+    let finRev = 0, finMat = 0;
+    for (const o of finScope) {
+      finRev += o.price + (o.delivery || 0);
+      const p = productById(o.product);
+      if (p && p.recipe) finMat += eng.materialCost(store, p, sizeById(o.size).mult);
+    }
+    const finProfitN = Math.max(0, finRev - finMat);
+    const splitPct = s.splitPct ?? 50;
+    const allowance = s.allowance ?? 12570;
+    const taxRate = s.taxRatePct ?? 20;
+    const niRate = s.niRatePct ?? 6;
+    const finPartners = [
+      { name: 'Jade', frac: splitPct / 100 },
+      { name: 'Nicole', frac: (100 - splitPct) / 100 }
+    ].map(pt => {
+      const share = finProfitN * pt.frac;
+      const taxable = Math.max(0, share - allowance);
+      const tax = taxable * taxRate / 100;
+      const ni = taxable * niRate / 100;
+      return {
+        name: pt.name,
+        share: eng.gbp(eng.round2(share)),
+        allowanceUsed: eng.gbp(eng.round2(Math.min(share, allowance))) + ' of ' + eng.gbp(allowance),
+        taxRate: taxRate + '%', tax: eng.gbp(eng.round2(tax)),
+        niRate: niRate + '%', ni: eng.gbp(eng.round2(ni)),
+        setAside: eng.gbp(eng.round2(tax + ni)),
+        takeHome: eng.gbp(Math.floor(share - tax - ni)),
+        taxableN: taxable
+      };
+    });
+    const allUnder = finPartners.every(p => p.taxableN === 0);
+
+    const stripeConnected = s.stripePublishable.startsWith('pk_') && s.stripeSecret.length > 4;
+
+    return {
+      ...base,
+      greeting, stats, upcoming, orderRows, materialRows, productRows, zoneRows,
+      hasAlerts: alerts.length > 0, alerts,
+      finPipeline: st.finPipeline,
+      setFinPipeline: (e) => this.setState({ finPipeline: e.target.checked }),
+      finRevenue: eng.gbp(eng.round2(finRev)),
+      finMaterials: eng.gbp(eng.round2(finMat)),
+      finProfit: eng.gbp(eng.round2(finProfitN)),
+      finScopeLabel: st.finPipeline ? 'delivered + booked orders' : 'delivered orders only',
+      finSplitLabel: splitPct + '/' + (100 - splitPct) + ' between Jade & Nicole',
+      finPartners,
+      finNote: allUnder ? 'You\u2019re both under the personal allowance so far, so there\u2019s nothing to set aside yet \u2014 lovely.' : '',
+      finSplitPct: splitPct, setFinSplit: (e) => this.setSetting('splitPct', Math.min(100, Math.max(0, parseFloat(e.target.value) || 0))),
+      finAllowance: allowance, setFinAllowance: (e) => this.setSetting('allowance', parseFloat(e.target.value) || 0),
+      finTaxRate: taxRate, setFinTaxRate: (e) => this.setSetting('taxRatePct', parseFloat(e.target.value) || 0),
+      finNiRate: niRate, setFinNiRate: (e) => this.setSetting('niRatePct', parseFloat(e.target.value) || 0),
+      galleryAdmin, reviewsAdmin, themeAdmin, imageOptions,
+      addGalleryItem: () => { store.gallery.push({ id: 'g' + Date.now(), title: 'New piece', src: (store.galleryImages || [])[0] || '' }); this.save(store); },
+      addReview: () => { store.reviews.push({ id: 'r' + Date.now(), text: '', name: '', event: '' }); this.save(store); },
+      newTheme: st.newTheme,
+      setNewTheme: (e) => this.setState({ newTheme: e.target.value }),
+      addTheme: () => {
+        const t = st.newTheme.trim();
+        if (!t || store.themes.includes(t)) return;
+        store.themes.push(t);
+        this.engine.saveStore(store);
+        this.setState({ store, newTheme: '' });
+      },
+      labourRate: s.labourRate, setLabourRate: (e) => this.setSetting('labourRate', parseFloat(e.target.value) || 0),
+      markupPct: s.markupPct, setMarkup: (e) => this.setSetting('markupPct', parseFloat(e.target.value) || 0),
+      leadDays: s.leadDays, setLeadDays: (e) => this.setSetting('leadDays', parseInt(e.target.value) || 0),
+      depositType: s.depositType, setDepositType: (e) => this.setSetting('depositType', e.target.value),
+      depositValue: s.depositValue, setDepositValue: (e) => this.setSetting('depositValue', parseFloat(e.target.value) || 0),
+      depositValueLabel: s.depositType === 'fixed' ? 'DEPOSIT AMOUNT (£)' : 'DEPOSIT (%)',
+      refundDays: s.refundDays, setRefundDays: (e) => this.setSetting('refundDays', parseInt(e.target.value) || 0),
+      stripePublishable: s.stripePublishable, setStripePub: (e) => this.setSetting('stripePublishable', e.target.value.trim()),
+      stripeSecret: s.stripeSecret, setStripeSec: (e) => this.setSetting('stripeSecret', e.target.value.trim()),
+      stripeStatus: stripeConnected ? 'Connected ✓' : 'Not connected',
+      stripeBg: stripeConnected ? '#E4F0E4' : '#FFE3DF',
+      stripeColor: stripeConnected ? '#3c7a3c' : '#c14a3e',
+      instagram: s.instagram, setInstagram: (e) => this.setSetting('instagram', e.target.value.trim()),
+      facebook: s.facebook, setFacebook: (e) => this.setSetting('facebook', e.target.value.trim()),
+      tiktok: s.tiktok, setTiktok: (e) => this.setSetting('tiktok', e.target.value.trim())
+    };
+  }
+}
+</script>
+</body>
+</html>
