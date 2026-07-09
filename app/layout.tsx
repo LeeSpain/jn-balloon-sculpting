@@ -25,8 +25,8 @@ const nunito = Nunito({
 });
 
 // Dynamic so admin-uploaded favicon / social-share image are honoured. When
-// those slots are blank the built-in defaults apply: the file-based icon.svg
-// and the generated opengraph-image route.
+// those slots are blank the built-in defaults apply: the generated icon routes
+// (app/icon.tsx, apple-icon, icon-192/512) and the opengraph-image route.
 export async function generateMetadata(): Promise<Metadata> {
   const images = (await getRepository().read()).images;
   const meta: Metadata = {

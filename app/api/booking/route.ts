@@ -8,7 +8,7 @@ import {
   minDate,
   gbp,
 } from "@/lib/pricing";
-import { serverStripeEnabled } from "@/lib/publicData";
+import { serverStripeEnabled, bookingsLive } from "@/lib/publicData";
 import { notifyNewBooking } from "@/lib/notify";
 import { nextOrderId } from "@/lib/ids";
 import { sameOrigin, rateLimit, clientIp } from "@/lib/security";
@@ -110,8 +110,10 @@ export async function POST(req: Request) {
     depositPaid: 0,
   };
 
-  // Real payment via Stripe Checkout (server-side, env-driven).
-  if (isBooking && serverStripeEnabled()) {
+  // Real payment via Stripe Checkout — only when the safety gate is open
+  // (durable DB configured AND BOOKINGS_LIVE=true). Otherwise fall through to
+  // enquiry mode so no card payment is taken against a non-persistent store.
+  if (isBooking && serverStripeEnabled() && bookingsLive()) {
     try {
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;

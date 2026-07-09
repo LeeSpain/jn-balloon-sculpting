@@ -33,7 +33,7 @@ export async function brandIconResponse(size: number): Promise<ImageResponse> {
       (
         <div style={{ width: "100%", height: "100%", display: "flex" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={favicon} width={size} height={size} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <img src={favicon} alt="" width={size} height={size} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
       ),
       { width: size, height: size },

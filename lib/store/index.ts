@@ -1,19 +1,26 @@
 // Single entry point for data access. Everything server-side imports from here.
 //
-// TO ADD A REAL DATABASE:
-//   1. Create e.g. lib/store/supabaseRepository.ts implementing StoreRepository.
-//   2. Return it below when the relevant env vars are present, e.g.:
-//        if (process.env.SUPABASE_URL) return new SupabaseRepository();
-//   No page or API route needs to change — they only depend on StoreRepository.
+// Selection:
+//   • Postgres (production) when a connection string is present — DATABASE_URL,
+//     POSTGRES_URL or POSTGRES_PRISMA_URL. Provision "Postgres" (Neon) from the
+//     Vercel Marketplace, or use any Postgres (Supabase/RDS) — it injects one of
+//     these. This is the durable, shared store: orders, bookings and content all
+//     survive across serverless instances.
+//   • JSON file (dev / no DB) — persists to .data/store.json locally; ephemeral
+//     on serverless (does NOT survive across instances). Never rely on it in prod.
 import type { StoreRepository } from "./repository";
 import { JsonFileRepository } from "./jsonFileRepository";
+import { PostgresRepository } from "./postgresRepository";
 
 let instance: StoreRepository | null = null;
 
+export function hasDatabase(): boolean {
+  return !!(process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL);
+}
+
 export function getRepository(): StoreRepository {
   if (instance) return instance;
-  // Only the local stub for now (chosen: "decide DB later").
-  instance = new JsonFileRepository();
+  instance = hasDatabase() ? new PostgresRepository() : new JsonFileRepository();
   return instance;
 }
 
