@@ -1,11 +1,17 @@
 // Finance / profit-and-loss computation for the admin dashboard.
 //
-// Builds a clear statement: Gross revenue → costs → tax → net profit, both in
-// aggregate and per order. Costs are derived from the current recipes and
-// labour/markup settings (the data model doesn't snapshot historical costs, so
-// figures reflect today's rates — matching how the Overview tab already works).
+// Jade & Nicole OWN the business and do NOT draw a wage — they share the net
+// profit after real costs. So their build time (labour) is NOT treated as a
+// cost here: the only cash costs are materials and delivery. Labour hours are
+// tracked purely for reference (to show the effective £/hr they earn).
+//
+// Costs are derived from the current recipes and rates (the data model doesn't
+// snapshot historical costs, so figures reflect today's rates).
 import type { Store } from "./types";
 import { priceProduct } from "./pricing";
+
+export const OWNER_COUNT = 2; // Jade & Nicole
+export const OWNER_NAMES = ["Jade", "Nicole"];
 
 export type FinanceBasis = "all" | "active" | "delivered";
 
@@ -19,9 +25,10 @@ export interface OrderFinance {
   deliveryIncome: number;
   revenue: number; // sales + delivery (what the customer pays)
   materials: number;
-  labour: number;
   deliveryCost: number;
-  totalCost: number;
+  totalCost: number; // materials + delivery (cash costs only — no wage)
+  labourHours: number; // owners' build time (reference only, not a cost)
+  labourValue: number; // notional value of that time (reference only)
   grossProfit: number; // revenue - totalCost (pre-tax, pre-VAT)
 }
 
@@ -34,14 +41,18 @@ export interface FinanceSummary {
   vatOnSales: number; // extracted output VAT (0 if not registered)
   netRevenue: number; // ex-VAT
   materials: number;
-  labour: number;
   deliveryCost: number;
-  totalCosts: number;
+  totalCosts: number; // materials + delivery (no wage)
   profitBeforeTax: number;
   taxRatePct: number;
   tax: number;
-  netProfit: number;
+  netProfit: number; // shared between the owners
   netMarginPct: number;
+  ownerCount: number;
+  perOwner: number; // net profit / owners
+  labourHours: number; // total owner build time (reference)
+  labourValue: number; // notional value of time (reference)
+  effectiveHourly: number; // net profit / labour hours
   vatRegistered: boolean;
   vatRatePct: number;
   labourRate: number;
@@ -50,15 +61,25 @@ export interface FinanceSummary {
 }
 
 export function computeFinance(store: Store, basis: FinanceBasis): FinanceSummary {
+  let orders = store.orders;
+  if (basis === "delivered") orders = orders.filter((o) => o.status === "Delivered");
+  else if (basis === "active") orders = orders.filter((o) => o.status !== "Delivered");
+  return computeFinanceForOrders(store, orders, basis);
+}
+
+// Build a full P&L statement for any set of orders — the aggregate views and a
+// single order's detail all flow through here, so the maths stays identical.
+export function computeFinanceForOrders(
+  store: Store,
+  orders: Store["orders"],
+  basis: FinanceBasis = "all"
+): FinanceSummary {
   const s = store.settings;
   const taxRatePct = s.taxRatePct ?? 0;
   const vatRegistered = !!s.vatRegistered;
   const vatRatePct = s.vatRatePct ?? 0;
   const deliveryCostPct = s.deliveryCostPct ?? 0;
-
-  let orders = store.orders;
-  if (basis === "delivered") orders = orders.filter((o) => o.status === "Delivered");
-  else if (basis === "active") orders = orders.filter((o) => o.status !== "Delivered");
+  const rate = s.labourRate || 0;
 
   const rows: OrderFinance[] = orders.map((o) => {
     const p = store.products.find((x) => x.id === o.product);
@@ -68,9 +89,10 @@ export function computeFinance(store: Store, basis: FinanceBasis): FinanceSummar
     const deliveryIncome = o.delivery || 0;
     const revenue = sales + deliveryIncome;
     const materials = pr.materials;
-    const labour = pr.labour;
     const deliveryCost = (deliveryIncome * deliveryCostPct) / 100;
-    const totalCost = materials + labour + deliveryCost;
+    const totalCost = materials + deliveryCost; // no wage — owners aren't paid
+    const labourValue = pr.labour;
+    const labourHours = rate > 0 ? pr.labour / rate : 0;
     return {
       id: o.id,
       customer: o.customer,
@@ -81,9 +103,10 @@ export function computeFinance(store: Store, basis: FinanceBasis): FinanceSummar
       deliveryIncome,
       revenue,
       materials,
-      labour,
       deliveryCost,
       totalCost,
+      labourHours,
+      labourValue,
       grossProfit: revenue - totalCost,
     };
   });
@@ -95,13 +118,15 @@ export function computeFinance(store: Store, basis: FinanceBasis): FinanceSummar
   const netRevenue = vatRegistered ? grossRevenue / (1 + vatRatePct / 100) : grossRevenue;
   const vatOnSales = grossRevenue - netRevenue;
   const materials = sum((r) => r.materials);
-  const labour = sum((r) => r.labour);
   const deliveryCost = sum((r) => r.deliveryCost);
-  const totalCosts = materials + labour + deliveryCost;
+  const totalCosts = materials + deliveryCost;
   const profitBeforeTax = netRevenue - totalCosts;
   const tax = profitBeforeTax > 0 ? (profitBeforeTax * taxRatePct) / 100 : 0;
   const netProfit = profitBeforeTax - tax;
   const netMarginPct = grossRevenue > 0 ? (netProfit / grossRevenue) * 100 : 0;
+  const labourHours = sum((r) => r.labourHours);
+  const labourValue = sum((r) => r.labourValue);
+  const effectiveHourly = labourHours > 0 ? netProfit / labourHours : 0;
 
   return {
     basis,
@@ -112,7 +137,6 @@ export function computeFinance(store: Store, basis: FinanceBasis): FinanceSummar
     vatOnSales,
     netRevenue,
     materials,
-    labour,
     deliveryCost,
     totalCosts,
     profitBeforeTax,
@@ -120,6 +144,11 @@ export function computeFinance(store: Store, basis: FinanceBasis): FinanceSummar
     tax,
     netProfit,
     netMarginPct,
+    ownerCount: OWNER_COUNT,
+    perOwner: netProfit / OWNER_COUNT,
+    labourHours,
+    labourValue,
+    effectiveHourly,
     vatRegistered,
     vatRatePct,
     labourRate: s.labourRate,

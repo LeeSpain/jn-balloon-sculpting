@@ -4,7 +4,43 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Store, Order, OrderStatus } from "@/lib/types";
 import { priceProduct, consumeStock, gbp, round2 } from "@/lib/pricing";
+import { assetUrl } from "@/lib/assets";
+import { computeFinance } from "@/lib/finance";
 import FinanceTab from "./FinanceTab";
+import OrderDetailModal from "./OrderDetailModal";
+
+// Read a chosen image file, downscale it to a sensible max dimension and
+// re-encode as a compressed JPEG data URL. Keeping images small matters because
+// the whole store (gallery included) is saved as one JSON document.
+async function readImageFile(
+  file: File,
+  maxDim = 1000,
+  quality = 0.82,
+): Promise<string> {
+  const dataUrl: string = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result as string);
+    fr.onerror = () => reject(fr.error);
+    fr.readAsDataURL(file);
+  });
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const width = Math.round(img.width * scale);
+      const height = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return resolve(dataUrl);
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
 
 type Tab = "overview" | "orders" | "finance" | "pricing" | "zones" | "content" | "settings";
 
@@ -48,7 +84,12 @@ export default function AdminApp({
   const [store, setStore] = useState<Store>(initialStore);
   const [tab, setTab] = useState<Tab>("overview");
   const [newTheme, setNewTheme] = useState("");
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const router = useRouter();
+
+  const selectedOrder = selectedOrderId
+    ? store.orders.find((o) => o.id === selectedOrderId) ?? null
+    : null;
 
   // Apply a mutation to a clone, update UI immediately, persist server-side.
   function commit(mutator: (draft: Store) => void) {
@@ -60,6 +101,25 @@ export default function AdminApp({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ store: draft }),
     }).catch(() => {});
+  }
+
+  // Replace an existing gallery item's photo with an uploaded image.
+  async function changeGalleryPhoto(index: number, file: File | undefined) {
+    if (!file) return;
+    const src = await readImageFile(file);
+    commit((d) => {
+      d.gallery[index].src = src;
+    });
+  }
+
+  // Add a brand-new gallery item from an uploaded image.
+  async function addGalleryPhoto(file: File | undefined) {
+    if (!file) return;
+    const src = await readImageFile(file);
+    const title = file.name.replace(/\.[^.]+$/, "").slice(0, 60) || "New piece";
+    commit((d) => {
+      d.gallery.push({ id: "g" + Date.now(), title, src });
+    });
   }
 
   async function resetData() {
@@ -94,30 +154,30 @@ export default function AdminApp({
     { id: "settings", label: "Settings" },
   ];
 
-  // ---- overview derived ----
+  // ---- overview derived (finance figures come straight from the P&L engine) ----
   const { greeting, stats, upcoming, alerts } = useMemo(() => {
     const active = store.orders.filter((o) => o.status !== "Delivered");
-    const upcoming = active
-      .slice()
-      .sort((a, b) => a.date.localeCompare(b.date));
-    const revenue = active.reduce((s, o) => s + o.price + (o.delivery || 0), 0);
-    const profitSum = active.reduce((s, o) => {
-      const p = productById(o.product);
-      const sz = sizeById(o.size);
-      return s + (o.price - (p && p.recipe ? priceProduct(store, p, sz.mult).cost : 0)) + (o.delivery || 0) * 0.5;
-    }, 0);
+    const upcoming = active.slice().sort((a, b) => a.date.localeCompare(b.date));
+    const fin = computeFinance(store, "active");
     const hour = new Date().getHours();
     const greeting = (hour < 12 ? "Morning" : hour < 18 ? "Afternoon" : "Evening") + ", Jade & Nicole";
     const firstUp = upcoming[0];
-    const stats = [
-      { label: "OPEN ORDERS", value: String(active.length), sub: "not yet delivered", color: "#4A2C4D" },
-      { label: "BOOKED REVENUE", value: gbp(revenue), sub: "incl. delivery", color: "#4A2C4D" },
-      { label: "EXPECTED PROFIT", value: gbp(Math.round(profitSum)), sub: "after materials & labour", color: "#3c7a3c" },
+    const stats: {
+      label: string;
+      value: string;
+      sub: string;
+      color: string;
+      goTab?: Tab;
+    }[] = [
+      { label: "OPEN ORDERS", value: String(active.length), sub: "not yet delivered", color: "#4A2C4D", goTab: "orders" },
+      { label: "BOOKED REVENUE", value: gbp(Math.round(fin.grossRevenue)), sub: "incl. delivery", color: "#4A2C4D", goTab: "finance" },
+      { label: "NET PROFIT", value: gbp(Math.round(fin.netProfit)), sub: `${gbp(Math.round(fin.perOwner))} each · after costs & tax`, color: "#3c7a3c", goTab: "finance" },
       {
         label: "NEXT DELIVERY",
         value: firstUp ? prettyDate(firstUp.date) : "—",
         sub: firstUp ? (productById(firstUp.product)?.name ?? firstUp.product) : "nothing booked",
         color: "#FF6F61",
+        goTab: "orders",
       },
     ];
     const alerts = store.materials
@@ -129,11 +189,13 @@ export default function AdminApp({
   function orderTotal(o: Order) {
     return gbp(o.price + (o.delivery || 0));
   }
+  // Owner profit per order: revenue − materials − delivery cost (no wage).
   function orderProfit(o: Order) {
     const p = productById(o.product);
     const sz = sizeById(o.size);
-    const cost = p && p.recipe ? priceProduct(store, p, sz.mult).cost : 0;
-    return o.price - cost;
+    const materials = p && p.recipe ? priceProduct(store, p, sz.mult).materials : 0;
+    const deliveryCost = ((o.delivery || 0) * (store.settings.deliveryCostPct ?? 0)) / 100;
+    return o.price + (o.delivery || 0) - materials - deliveryCost;
   }
   function setStatus(orderId: string, next: OrderStatus) {
     commit((d) => {
@@ -202,11 +264,19 @@ export default function AdminApp({
             <p className="m-0 mb-6 text-plum-soft text-[15px]">Here&apos;s how the business looks today.</p>
             <div className="grid gap-3.5 mb-7" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
               {stats.map((s) => (
-                <div key={s.label} className={card} style={{ padding: 20 }}>
-                  <p className="m-0 mb-1.5 text-xs font-extrabold text-gold" style={{ letterSpacing: "1.5px" }}>{s.label}</p>
+                <button
+                  key={s.label}
+                  onClick={() => s.goTab && setTab(s.goTab)}
+                  disabled={!s.goTab}
+                  className={`${card} text-left font-sans`}
+                  style={{ padding: 20, border: "none", cursor: s.goTab ? "pointer" : "default" }}
+                >
+                  <p className="m-0 mb-1.5 text-xs font-extrabold text-gold flex items-center gap-1" style={{ letterSpacing: "1.5px" }}>
+                    {s.label} {s.goTab && <span style={{ color: "#D4AF7A" }}>→</span>}
+                  </p>
                   <p className="m-0 font-display font-bold" style={{ fontSize: 32, color: s.color }}>{s.value}</p>
                   <p className="mt-1 mb-0 text-[12.5px] text-plum-soft">{s.sub}</p>
-                </div>
+                </button>
               ))}
             </div>
             {alerts.length > 0 && (
@@ -222,7 +292,12 @@ export default function AdminApp({
               {upcoming.map((o) => {
                 const ss = STATUS_STYLES[o.status] || STATUS_STYLES["Order received"];
                 return (
-                  <div key={o.id} className={`${card} flex flex-wrap gap-3 items-center justify-between`} style={{ padding: "16px 18px" }}>
+                  <div
+                    key={o.id}
+                    onClick={() => setSelectedOrderId(o.id)}
+                    className={`${card} jn-click flex flex-wrap gap-3 items-center justify-between`}
+                    style={{ padding: "16px 18px", cursor: "pointer" }}
+                  >
                     <div style={{ minWidth: 90 }}>
                       <p className="m-0 font-extrabold text-[15px]">{prettyDate(o.date)}</p>
                       <p className="mt-0.5 mb-0 text-xs text-plum-soft">{o.id}</p>
@@ -249,7 +324,12 @@ export default function AdminApp({
               {orderRows.map((o) => {
                 const profit = orderProfit(o);
                 return (
-                  <div key={o.id} className={`${card} grid gap-3.5 items-center`} style={{ padding: "18px 20px", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+                  <div
+                    key={o.id}
+                    onClick={() => setSelectedOrderId(o.id)}
+                    className={`${card} jn-click grid gap-3.5 items-center`}
+                    style={{ padding: "18px 20px", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", cursor: "pointer" }}
+                  >
                     <div>
                       <p className="m-0 font-extrabold text-[15px]">{o.customer}</p>
                       <p className="mt-0.5 mb-0 text-[12.5px] text-plum-soft">{o.id} · {o.phone}</p>
@@ -268,6 +348,7 @@ export default function AdminApp({
                     </div>
                     <select
                       value={o.status}
+                      onClick={(e) => e.stopPropagation()}
                       onChange={(e) => setStatus(o.id, e.target.value as OrderStatus)}
                       className="border-2 border-blush rounded-xl font-bold bg-cream font-sans"
                       style={{ padding: "10px 12px", fontSize: "13.5px", minHeight: 44 }}
@@ -284,7 +365,14 @@ export default function AdminApp({
         )}
 
         {/* FINANCE */}
-        {tab === "finance" && <FinanceTab store={store} setSetting={setSetting} />}
+        {tab === "finance" && (
+          <FinanceTab
+            store={store}
+            setSetting={setSetting}
+            onSelectOrder={setSelectedOrderId}
+            onNavigate={(t) => setTab(t)}
+          />
+        )}
 
         {/* PRICING */}
         {tab === "pricing" && (
@@ -382,25 +470,44 @@ export default function AdminApp({
 
             <h2 className="font-display m-0 mb-3.5" style={{ fontSize: 22 }}>Gallery</h2>
             <div className="flex flex-col gap-2.5 mb-3.5">
-              {store.gallery.map((g, i) => (
+              {store.gallery.map((g, i) => {
+                const uploaded = g.src.startsWith("data:");
+                return (
                 <div key={g.id} className={`${card} flex flex-wrap gap-3 items-center`} style={{ padding: "12px 16px" }}>
-                  <div style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: "#F8EDE9", backgroundImage: `url('/${g.src}')`, backgroundSize: "cover", backgroundPosition: "center" }} />
+                  <div style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: "#F8EDE9", backgroundImage: `url('${assetUrl(g.src)}')`, backgroundSize: "cover", backgroundPosition: "center" }} />
                   <input value={g.title} onChange={(e) => commit((d) => { d.gallery[i].title = e.target.value; })} className="rounded-lg font-bold bg-cream text-plum font-sans border-2 border-blush" style={{ flex: 1, minWidth: 160, padding: "9px 12px", fontSize: 14 }} />
-                  <select value={g.src} onChange={(e) => commit((d) => { d.gallery[i].src = e.target.value; })} className="rounded-lg bg-cream border-2 border-blush font-sans" style={{ padding: "9px 10px", fontSize: "12.5px", maxWidth: 210, minHeight: 42 }}>
+                  <select
+                    value={uploaded ? "__uploaded__" : g.src}
+                    onChange={(e) => { if (e.target.value !== "__uploaded__") commit((d) => { d.gallery[i].src = e.target.value; }); }}
+                    className="rounded-lg bg-cream border-2 border-blush font-sans"
+                    style={{ padding: "9px 10px", fontSize: "12.5px", maxWidth: 210, minHeight: 42 }}
+                  >
+                    {uploaded && <option value="__uploaded__">Uploaded photo</option>}
                     {(store.galleryImages || []).map((src) => (
                       <option key={src} value={src}>{src.replace("images/", "").replace(".png", "").replace("gallery-", "")}</option>
                     ))}
                   </select>
+                  <label className="cursor-pointer bg-cream text-plum font-sans font-extrabold text-[12.5px] rounded-lg" style={{ border: "2px solid #F3C6C6", padding: "9px 12px", minHeight: 40, display: "inline-flex", alignItems: "center" }}>
+                    Change photo
+                    <input type="file" accept="image/*" onChange={(e) => { changeGalleryPhoto(i, e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} />
+                  </label>
                   <div className="flex gap-1.5">
                     <button onClick={() => commit((d) => { if (i > 0) [d.gallery[i - 1], d.gallery[i]] = [d.gallery[i], d.gallery[i - 1]]; })} className="cursor-pointer border-0 bg-cream rounded-lg font-extrabold" style={{ padding: "9px 12px", minHeight: 40 }}>↑</button>
                     <button onClick={() => commit((d) => { if (i < d.gallery.length - 1) [d.gallery[i + 1], d.gallery[i]] = [d.gallery[i], d.gallery[i + 1]]; })} className="cursor-pointer border-0 bg-cream rounded-lg font-extrabold" style={{ padding: "9px 12px", minHeight: 40 }}>↓</button>
                     <button onClick={() => commit((d) => { d.gallery.splice(i, 1); })} className="cursor-pointer border-0 rounded-lg font-extrabold" style={{ background: "#FFE3DF", color: "#c14a3e", padding: "9px 12px", minHeight: 40 }}>✕</button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
-            <button onClick={() => commit((d) => { d.gallery.push({ id: "g" + Date.now(), title: "New piece", src: (d.galleryImages || [])[0] || "" }); })} className="cursor-pointer bg-plum text-white border-0 font-sans font-extrabold text-[13.5px] rounded-full" style={{ padding: "11px 20px", marginBottom: 10, minHeight: 44 }}>+ Add gallery item</button>
-            <p className="text-[12.5px] text-plum-soft" style={{ margin: "0 0 32px" }}>New items use your existing artwork — drop real photos into the project and they&apos;ll be selectable here.</p>
+            <div className="flex gap-2.5 flex-wrap" style={{ marginBottom: 10 }}>
+              <label className="cursor-pointer bg-plum text-white font-sans font-extrabold text-[13.5px] rounded-full" style={{ padding: "11px 20px", minHeight: 44, display: "inline-flex", alignItems: "center" }}>
+                + Upload new photo
+                <input type="file" accept="image/*" onChange={(e) => { addGalleryPhoto(e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} />
+              </label>
+              <button onClick={() => commit((d) => { d.gallery.push({ id: "g" + Date.now(), title: "New piece", src: (d.galleryImages || [])[0] || "" }); })} className="cursor-pointer bg-white text-plum font-sans font-extrabold text-[13.5px] rounded-full" style={{ border: "2px solid #F3C6C6", padding: "11px 20px", minHeight: 44 }}>+ Add from existing artwork</button>
+            </div>
+            <p className="text-[12.5px] text-plum-soft" style={{ margin: "0 0 32px" }}>Upload a photo straight from your phone or computer to add or replace a gallery image — it appears on the website immediately. Photos are resized automatically to keep the site fast.</p>
 
             <h2 className="font-display m-0 mb-3.5" style={{ fontSize: 22 }}>Customer reviews</h2>
             <div className="flex flex-col gap-2.5 mb-3.5">
@@ -506,6 +613,16 @@ export default function AdminApp({
           </>
         )}
       </main>
+
+      {/* Order detail with its own P&L */}
+      <OrderDetailModal
+        store={store}
+        order={selectedOrder}
+        onClose={() => setSelectedOrderId(null)}
+        onStatusChange={setStatus}
+      />
+
+      <style>{`.jn-click:hover { box-shadow: 0 6px 18px rgba(74,44,77,0.14); transform: translateY(-1px); transition: box-shadow .12s, transform .12s; }`}</style>
     </div>
   );
 }
