@@ -5,7 +5,7 @@ import { getRepository } from "@/lib/store";
 import { assetUrl } from "@/lib/assets";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-const title = "J&N Balloon Sculpting — Handcrafted balloon art, delivered";
+const title = "J&N Balloon Sculpting — Handcrafted balloon art, delivered across Cambridgeshire";
 const description =
   "Arches, garlands and centrepieces for birthdays, weddings and every celebration in between — handmade by Jade & Nicole and delivered across Cambridgeshire.";
 
@@ -33,7 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(siteUrl),
     title: {
       default: title,
-      template: "%s · J&N Balloon Sculpting",
+      template: "%s | J&N Balloon Sculpting",
     },
     description,
     applicationName: "J&N Balloon Sculpting",
@@ -73,9 +73,9 @@ export async function generateMetadata(): Promise<Metadata> {
       googleBot: { index: true, follow: true, "max-image-preview": "large" },
     },
   };
-  if (images.favicon) {
-    meta.icons = { icon: assetUrl(images.favicon), apple: assetUrl(images.favicon) };
-  }
+  // Favicons/app icons are produced by the file-based routes (app/icon.tsx,
+  // app/apple-icon.tsx, /icon-192, /icon-512), which already source the admin
+  // favicon slot — so no meta.icons override is needed here.
   return meta;
 }
 
