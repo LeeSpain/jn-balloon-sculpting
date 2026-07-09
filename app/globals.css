@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: #fbf7f2;
+  color: #4a2c4d;
+}
+
+a {
+  color: #4a2c4d;
+}
+a:hover {
+  color: #ff6f61;
+}
+
+/* Match the prototype's focus accent on form controls */
+input,
+select {
+  outline-color: #d4af7a;
+}

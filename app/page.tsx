@@ -1,0 +1,266 @@
+import Link from "next/link";
+import { getRepository } from "@/lib/store";
+import { buildPublicData } from "@/lib/publicData";
+import QuoteBuilder from "@/components/QuoteBuilder";
+import { CopyButton } from "@/components/CopyButton";
+
+export const dynamic = "force-dynamic";
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: { booked?: string; cancelled?: string };
+}) {
+  const store = await getRepository().read();
+  const data = buildPublicData(store);
+  const socials = [
+    { name: "Instagram", url: data.settings.instagram },
+    { name: "Facebook", url: data.settings.facebook },
+    { name: "TikTok", url: data.settings.tiktok },
+  ].filter((x) => x.url);
+
+  return (
+    <>
+      {/* Header */}
+      <header
+        className="sticky top-0 z-20"
+        style={{
+          background: "rgba(251,247,242,0.92)",
+          backdropFilter: "blur(8px)",
+          borderBottom: "1px solid #F3C6C6",
+        }}
+      >
+        <div className="max-w-site mx-auto flex items-center justify-between gap-4" style={{ padding: "14px 20px" }}>
+          <a href="#top" className="no-underline flex flex-col leading-none">
+            <span className="font-display text-[26px] font-bold">
+              J<span className="text-gold">&amp;</span>N
+            </span>
+            <span className="text-[9px] font-bold mt-[3px]" style={{ letterSpacing: "3.5px" }}>
+              BALLOON SCULPTING
+            </span>
+          </a>
+          <nav className="flex gap-[22px] items-center font-bold text-sm">
+            <a href="#quote" className="no-underline">Get a quote</a>
+            <a href="#gallery" className="no-underline">Gallery</a>
+            <a href="#about" className="no-underline">About</a>
+            <a
+              href="#quote"
+              className="no-underline bg-coral text-white rounded-full"
+              style={{ padding: "9px 18px", boxShadow: "0 2px 8px rgba(255,111,97,0.35)" }}
+            >
+              Book now
+            </a>
+          </nav>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section
+        id="top"
+        className="max-w-site mx-auto grid items-center"
+        style={{
+          padding: "64px 20px 48px",
+          gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))",
+          gap: "36px",
+        }}
+      >
+        <div>
+          <p className="m-0 mb-3.5 text-xs font-extrabold text-gold" style={{ letterSpacing: "3px" }}>
+            CAMBRIDGESHIRE BASED
+          </p>
+          <h1 className="font-display font-bold m-0 mb-[18px]" style={{ fontSize: "clamp(34px, 5vw, 52px)", lineHeight: 1.12 }}>
+            Handcrafted balloon art, delivered to your door
+          </h1>
+          <p className="text-[17px] m-0 mb-[26px]" style={{ lineHeight: 1.6, maxWidth: "46ch" }}>
+            Arches, garlands and centrepieces for birthdays, weddings and every celebration in between — made by hand by Jade &amp; Nicole, and delivered ready to wow.
+          </p>
+          <div className="flex gap-3.5 flex-wrap items-center">
+            <a
+              href="#quote"
+              className="no-underline bg-coral text-white font-extrabold text-base rounded-full"
+              style={{ padding: "14px 28px", boxShadow: "0 4px 14px rgba(255,111,97,0.4)" }}
+            >
+              Get an instant quote
+            </a>
+            <a href="#gallery" className="no-underline font-bold text-[15px]" style={{ borderBottom: "2px solid #D4AF7A", paddingBottom: "2px" }}>
+              See our work
+            </a>
+          </div>
+        </div>
+        <div
+          className="rounded-3xl overflow-hidden"
+          style={{ boxShadow: "0 10px 30px rgba(74,44,77,0.12)", aspectRatio: "4/5", maxHeight: "440px" }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/hero-arch.png" alt="Blush and gold balloon arch" className="w-full h-full object-cover block" />
+        </div>
+      </section>
+
+      {/* Quote builder */}
+      <section id="quote" className="max-w-site mx-auto" style={{ padding: "24px 20px 64px", scrollMarginTop: "80px" }}>
+        {searchParams?.booked && (
+          <div
+            className="mb-5 rounded-2xl text-[14.5px] font-bold"
+            style={{ background: "#F0F7F0", border: "2px solid #9DC49D", padding: "18px 20px", color: "#3c5a3c" }}
+          >
+            Payment successful — booking {searchParams.booked} confirmed! Your deposit is paid; the balance is due
+            before delivery. A confirmation is on its way to you.
+          </div>
+        )}
+        {searchParams?.cancelled && (
+          <div
+            className="mb-5 rounded-2xl text-[14.5px] font-bold"
+            style={{ background: "#FFF3F1", border: "2px solid #FF6F61", padding: "18px 20px", color: "#c14a3e" }}
+          >
+            Payment cancelled — no charge was made. Your booking {searchParams.cancelled} is saved as an enquiry;
+            complete the deposit any time to secure your date.
+          </div>
+        )}
+        <QuoteBuilder data={data} />
+      </section>
+
+      {/* Gallery */}
+      <section id="gallery" className="max-w-site mx-auto" style={{ padding: "24px 20px 64px", scrollMarginTop: "80px" }}>
+        <h2 className="font-display m-0 mb-1.5" style={{ fontSize: "clamp(26px, 3.5vw, 36px)" }}>
+          Recent creations
+        </h2>
+        <p className="m-0 mb-6 text-[15px] text-plum-soft">
+          Every piece is handmade to order — here are a few favourites.
+        </p>
+        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
+          {data.gallery.map((g) => (
+            <figure key={g.id} className="m-0 rounded-[18px] overflow-hidden bg-white shadow-card">
+              <div
+                style={{
+                  aspectRatio: "1",
+                  backgroundColor: "#F8EDE9",
+                  backgroundImage: `url('/${g.src}')`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }}
+              />
+              <figcaption className="flex items-center justify-between gap-2" style={{ padding: "12px 14px" }}>
+                <span className="font-bold text-sm">{g.title}</span>
+                <CopyButton
+                  hash="#quote"
+                  idleLabel="Share"
+                  copiedLabel="Copied ✓"
+                  className="cursor-pointer border-0 bg-cream text-gold font-extrabold text-xs rounded-full font-sans"
+                  style={{ padding: "8px 12px" }}
+                />
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </section>
+
+      {/* Reviews */}
+      <section style={{ background: "#F3C6C6" }}>
+        <div className="max-w-site mx-auto" style={{ padding: "56px 20px" }}>
+          <h2 className="font-display m-0 mb-6" style={{ fontSize: "clamp(26px, 3.5vw, 36px)" }}>
+            Kind words
+          </h2>
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))" }}>
+            {data.reviews.map((r) => (
+              <blockquote key={r.id} className="m-0 bg-cream rounded-[18px] shadow-card" style={{ padding: 22 }}>
+                <p className="m-0 mb-3.5 text-[15px] italic" style={{ lineHeight: 1.6 }}>
+                  “{r.text}”
+                </p>
+                <footer className="font-extrabold text-[13.5px] text-gold">
+                  {r.name} <span className="text-plum-soft font-semibold">· {r.event}</span>
+                </footer>
+              </blockquote>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* About */}
+      <section
+        id="about"
+        className="max-w-site mx-auto grid items-center"
+        style={{ padding: "64px 20px", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "36px", scrollMarginTop: "80px" }}
+      >
+        <div className="flex gap-3.5">
+          <div className="flex-1 rounded-[18px] overflow-hidden relative" style={{ aspectRatio: "3/4" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/about-jade.png" alt="Jade" className="w-full h-full object-cover block" />
+            <span
+              className="absolute font-extrabold text-xs rounded-full"
+              style={{ bottom: 10, left: "50%", transform: "translateX(-50%)", background: "rgba(251,247,242,0.92)", padding: "5px 12px" }}
+            >
+              Jade
+            </span>
+          </div>
+          <div className="flex-1 rounded-[18px] overflow-hidden relative" style={{ aspectRatio: "3/4", marginTop: 28 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/about-nicole.png" alt="Nicole" className="w-full h-full object-cover block" />
+            <span
+              className="absolute font-extrabold text-xs rounded-full"
+              style={{ bottom: 10, left: "50%", transform: "translateX(-50%)", background: "rgba(251,247,242,0.92)", padding: "5px 12px" }}
+            >
+              Nicole
+            </span>
+          </div>
+        </div>
+        <div>
+          <p className="m-0 mb-2.5 text-xs font-extrabold text-gold" style={{ letterSpacing: "3px" }}>
+            MEET JADE &amp; NICOLE
+          </p>
+          <h2 className="font-display m-0 mb-4" style={{ fontSize: "clamp(26px, 3.5vw, 36px)" }}>
+            Two local mums, one big idea
+          </h2>
+          <p className="text-[15.5px] m-0 mb-3.5" style={{ lineHeight: 1.7 }}>
+            We&apos;re Jade and Nicole — friends, single mums, and the hands behind every balloon we deliver. What started as decorating our own children&apos;s parties in Huntingdon and Stilton became the thing people kept asking us to do for theirs.
+          </p>
+          <p className="text-[15.5px] m-0" style={{ lineHeight: 1.7 }}>
+            Every piece is built by us, in advance, with care — then delivered to your door anywhere in Cambridgeshire so all you have to do is enjoy the party.
+          </p>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer style={{ background: "#4A2C4D", color: "#FBF7F2" }}>
+        <div className="max-w-site mx-auto flex flex-wrap justify-between" style={{ padding: "44px 20px 32px", gap: "32px" }}>
+          <div>
+            <p className="font-display text-2xl font-bold m-0">
+              J<span className="text-gold">&amp;</span>N
+            </p>
+            <p className="text-[9px] font-bold" style={{ letterSpacing: "3.5px", margin: "4px 0 14px" }}>
+              BALLOON SCULPTING
+            </p>
+            <p className="text-[13.5px] m-0" style={{ opacity: 0.85, maxWidth: "34ch", lineHeight: 1.6 }}>
+              Handcrafted balloon art, delivered across Cambridgeshire. Huntingdon · Stilton · and everywhere in between.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2.5">
+            <p className="font-extrabold text-[13px] m-0" style={{ letterSpacing: "1px" }}>
+              GET IN TOUCH
+            </p>
+            <a href="mailto:hello@jnballoons.co.uk" className="text-[14px] no-underline" style={{ color: "#F3C6C6" }}>
+              hello@jnballoons.co.uk
+            </a>
+            <CopyButton
+              hash="#quote"
+              idleLabel="Copy booking link"
+              className="cursor-pointer self-start bg-coral text-white border-0 font-sans font-extrabold text-[13.5px] rounded-full"
+              style={{ padding: "11px 20px", minHeight: 44 }}
+            />
+            {socials.length > 0 && (
+              <div className="flex gap-3 mt-1">
+                {socials.map((sl) => (
+                  <a key={sl.name} href={sl.url} className="text-gold font-extrabold text-[13px] no-underline">
+                    {sl.name}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="text-center text-xs" style={{ borderTop: "1px solid rgba(251,247,242,0.15)", padding: 14, opacity: 0.7 }}>
+          © 2026 J&amp;N Balloon Sculpting · <Link href="/admin" className="text-gold no-underline">Admin</Link>
+        </div>
+      </footer>
+    </>
+  );
+}
