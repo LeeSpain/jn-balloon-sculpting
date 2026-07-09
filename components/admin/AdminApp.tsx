@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Store, Order, OrderStatus } from "@/lib/types";
-import { priceProduct, consumeStock, gbp, round2 } from "@/lib/pricing";
+import { priceProduct, consumeStock, gbp, round2, perUnitCost, recipeBreakdown } from "@/lib/pricing";
 import { assetUrl } from "@/lib/assets";
 import { computeFinance } from "@/lib/finance";
 import FinanceTab from "./FinanceTab";
@@ -72,6 +72,11 @@ function prettyDate(iso: string): string {
     day: "numeric",
     month: "short",
   });
+}
+
+// Show whole numbers plainly (200), fractions to 2dp (0.5).
+function fmtQty(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0$/, "");
 }
 
 export default function AdminApp({
@@ -396,11 +401,25 @@ export default function AdminApp({
                 const low = m.stock != null && m.stock <= (m.lowAt ?? 0);
                 return (
                   <div key={m.id} className="flex gap-3 items-center flex-wrap" style={{ padding: "10px 0", borderBottom: "1px solid #FBF7F2" }}>
-                    <span className="font-bold text-[14.5px]" style={{ flex: 1, minWidth: 180 }}>{m.name}</span>
-                    <span className="text-[12.5px] text-plum-soft" style={{ width: 70 }}>per {m.unit}</span>
+                    <span className="font-bold text-[14.5px]" style={{ flex: 1, minWidth: 150 }}>{m.name}</span>
+                    <span className="text-[12.5px] text-plum-soft" style={{ width: 56 }}>per {m.unit}</span>
                     <span className="flex items-center gap-1 font-extrabold">
                       £<input type="number" step="0.1" value={m.cost} onChange={(e) => commit((d) => { d.materials[i].cost = parseFloat(e.target.value) || 0; })} className={numInput} style={{ padding: "8px 10px", fontSize: 15, width: 76 }} />
                     </span>
+                    {m.packSize && m.packSize > 1 ? (
+                      <span className="flex items-center gap-1.5 text-[12px] font-bold text-plum-soft" title={`Each ${m.unitLabel || "unit"} costs £${perUnitCost(m).toFixed(3)}`}>
+                        of
+                        <input type="number" step="1" value={m.packSize} onChange={(e) => commit((d) => { d.materials[i].packSize = parseInt(e.target.value) || 1; })} className="rounded-lg font-bold bg-cream text-plum font-sans border-2 border-blush" style={{ padding: "7px 8px", fontSize: 13, width: 56 }} />
+                        {m.unitLabel || "units"}
+                        <span className="rounded-full" style={{ background: "#F0F7F0", color: "#3c7a3c", padding: "3px 9px", fontWeight: 800, whiteSpace: "nowrap" }}>
+                          = £{perUnitCost(m).toFixed(3)}/{m.unitLabel || "unit"}
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="text-[12px] text-plum-soft" style={{ minWidth: 90 }}>
+                        £{perUnitCost(m).toFixed(2)} / {m.unitLabel || m.unit}
+                      </span>
+                    )}
                     <span className="flex items-center gap-1.5 text-xs font-bold" style={{ color: low ? "#c14a3e" : "#7a5f7d" }}>
                       stock
                       <input type="number" step="0.5" value={m.stock ?? 0} onChange={(e) => commit((d) => { d.materials[i].stock = parseFloat(e.target.value) || 0; })} className="rounded-lg font-bold bg-cream text-plum font-sans" style={{ border: `2px solid ${low ? "#FF6F61" : "#F3C6C6"}`, padding: "8px 10px", fontSize: 14, width: 62 }} />
@@ -423,6 +442,22 @@ export default function AdminApp({
                       <input type="number" step="0.25" value={p.buildHours} onChange={(e) => commit((d) => { d.products[i].buildHours = parseFloat(e.target.value) || 0; })} className={numInput} style={{ padding: "7px 10px", fontSize: 14, width: 64 }} />
                     </label>
                     <Row label="Materials" value={gbp(q.materials)} />
+                    {/* Per-material breakdown so cost is never just one lump */}
+                    <div className="mb-1" style={{ paddingLeft: 8 }}>
+                      {recipeBreakdown(store, p, 1).map((l) => (
+                        <div
+                          key={l.id}
+                          className="flex justify-between gap-2 text-[11.5px]"
+                          style={{ padding: "1px 0" }}
+                          title={`${fmtQty(l.qty)} ${l.unitLabel} @ £${l.perUnit.toFixed(l.perUnit < 1 ? 3 : 2)} each`}
+                        >
+                          <span className="text-plum-soft" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {l.name} <span style={{ opacity: 0.7 }}>×{fmtQty(l.qty)}</span>
+                          </span>
+                          <span className="font-bold" style={{ whiteSpace: "nowrap" }}>{gbp(round2(l.lineCost))}</span>
+                        </div>
+                      ))}
+                    </div>
                     <Row label="Labour" value={gbp(q.labour)} />
                     <Row label="Customer price" value={gbp(q.price)} valueColor="#FF6F61" border />
                     <Row label="Profit" value={gbp(round2(q.price - q.cost))} valueColor="#3c7a3c" />
@@ -569,10 +604,12 @@ export default function AdminApp({
                     <option value="percent">Percentage deposit (%)</option>
                   </select>
                 </label>
-                <label className={fieldLabel} style={{ letterSpacing: "1px" }}>
-                  {store.settings.depositType === "fixed" ? "DEPOSIT AMOUNT (£)" : "DEPOSIT (%)"}
-                  <input type="number" value={store.settings.depositValue} onChange={(e) => setSetting("depositValue", parseFloat(e.target.value) || 0)} className={numInput} style={{ padding: "10px 12px", fontSize: 16, width: 100 }} />
-                </label>
+                {store.settings.depositType !== "full" && (
+                  <label className={fieldLabel} style={{ letterSpacing: "1px" }}>
+                    {store.settings.depositType === "fixed" ? "DEPOSIT AMOUNT (£)" : "DEPOSIT (%)"}
+                    <input type="number" value={store.settings.depositValue} onChange={(e) => setSetting("depositValue", parseFloat(e.target.value) || 0)} className={numInput} style={{ padding: "10px 12px", fontSize: 16, width: 100 }} />
+                  </label>
+                )}
                 <label className={fieldLabel} style={{ letterSpacing: "1px" }}>
                   REFUNDABLE UNTIL (WORKING DAYS BEFORE)
                   <input type="number" value={store.settings.refundDays} onChange={(e) => setSetting("refundDays", parseInt(e.target.value) || 0)} className={numInput} style={{ padding: "10px 12px", fontSize: 16, width: 100 }} />

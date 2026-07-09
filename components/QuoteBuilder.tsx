@@ -79,7 +79,12 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
     const quoteReady = zoneOk && dateOk;
     const total = quoteReady ? basePrice + (zone!.fee as number) : basePrice;
     const deposit = depositFor(total, s.depositType, s.depositValue);
-    const depositWord = s.depositType === "full" ? "Full payment" : `${gbp(deposit)} deposit`;
+    const payInFull = s.depositType === "full";
+    // Line under the price + the pay button label both adapt to the mode
+    // chosen in Admin → Settings → Deposit type.
+    const payNote = payInFull
+      ? "Pay in full now to confirm your booking"
+      : `${gbp(deposit)} deposit to confirm · balance before delivery`;
 
     let blockedMsg: string | null = null;
     if (postcode.trim() && outside) {
@@ -103,9 +108,14 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
       quoteReady,
       total,
       deposit,
-      depositWord,
+      payInFull,
+      payNote,
       blockedMsg,
-      bookLabel: s.stripeEnabled ? `Pay ${gbp(deposit)} deposit` : "Book now",
+      bookLabel: s.stripeEnabled
+        ? payInFull
+          ? `Pay ${gbp(total)} now`
+          : `Pay ${gbp(deposit)} deposit`
+        : "Book now",
     };
   }, [postcode, date, product, sizeId, s, data.zones, data.minDate]);
 
@@ -333,7 +343,7 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
               {q.zoneOk ? gbp(q.zone!.fee) : "—"}
             </p>
             <p className="mt-1 mb-0 text-[13px] font-bold">
-              {q.depositWord} to confirm · balance before delivery
+              {q.payNote}
             </p>
             <p className="mt-1 mb-0 text-xs font-semibold" style={{ opacity: 0.9 }}>
               Free cancellation up to {s.refundDays} working days before delivery

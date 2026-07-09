@@ -8,8 +8,8 @@ export function seedStore(): Store {
       labourRate: 20,
       markupPct: 50,
       leadDays: 7,
-      depositType: "percent",
-      depositValue: 50,
+      depositType: "full", // pay in full to confirm (change in Admin → Settings)
+      depositValue: 50, // only used if deposit type is switched to fixed/percent
       refundDays: 5,
       taxRatePct: 20,
       vatRegistered: false,
@@ -22,8 +22,8 @@ export function seedStore(): Store {
       tiktok: "",
     },
     materials: [
-      { id: "latex", name: "Latex balloons (pack of 100)", unit: "pack", cost: 6.5 },
-      { id: "foil", name: "Foil number balloon", unit: "each", cost: 4.2 },
+      { id: "latex", name: "Latex balloons", unit: "pack", cost: 6.5, packSize: 100, unitLabel: "balloon" },
+      { id: "foil", name: "Foil number balloon", unit: "each", cost: 4.2, unitLabel: "balloon" },
       { id: "helium", name: "Helium canister", unit: "canister", cost: 32, stock: 2, lowAt: 1 },
       { id: "ribbon", name: "Ribbon (roll)", unit: "roll", cost: 2.5, stock: 8, lowAt: 2 },
       { id: "weight", name: "Balloon weight", unit: "each", cost: 1.2, stock: 14, lowAt: 5 },
@@ -32,12 +32,12 @@ export function seedStore(): Store {
       { id: "floral", name: "Decorative florals (set)", unit: "set", cost: 5.5, stock: 4, lowAt: 1 },
     ],
     products: [
-      { id: "arch", name: "Birthday Arch", fill: "air", buildHours: 1.25, desc: "A full colour arch, built ahead and delivered ready to place.", recipe: { latex: 2, strip: 1, glue: 1, ribbon: 0.5 } },
-      { id: "garland", name: "Balloon Garland", fill: "air", buildHours: 1, desc: "Organic garland for tables, doorways and backdrops.", recipe: { latex: 1.5, strip: 0.5, glue: 1, ribbon: 0.5 } },
-      { id: "wedding", name: "Wedding Centrepiece", fill: "air", buildHours: 0.75, desc: "Elegant table piece in soft tones with floral detail.", recipe: { latex: 0.5, weight: 2, floral: 1, ribbon: 0.5 } },
-      { id: "grad", name: "Graduation Display", fill: "air", buildHours: 1, desc: "Celebrate results day with a personalised display.", recipe: { latex: 1, foil: 2, weight: 2, glue: 0.5 } },
-      { id: "number", name: "Number Display", fill: "air", buildHours: 0.75, desc: "Big foil numbers dressed with a balloon cluster.", recipe: { foil: 2, latex: 0.5, weight: 2, ribbon: 0.5 } },
-      { id: "helium9", name: "Helium Bouquet (9)", fill: "helium", buildHours: 0.5, desc: "Nine helium balloons, ribboned and weighted. Same-day delivery.", recipe: { latex: 0.15, helium: 0.3, ribbon: 1, weight: 1 } },
+      { id: "arch", name: "Birthday Arch", fill: "air", buildHours: 1.25, desc: "A full colour arch, built ahead and delivered ready to place.", recipe: { latex: 200, strip: 1, glue: 1, ribbon: 0.5 } },
+      { id: "garland", name: "Balloon Garland", fill: "air", buildHours: 1, desc: "Organic garland for tables, doorways and backdrops.", recipe: { latex: 150, strip: 0.5, glue: 1, ribbon: 0.5 } },
+      { id: "wedding", name: "Wedding Centrepiece", fill: "air", buildHours: 0.75, desc: "Elegant table piece in soft tones with floral detail.", recipe: { latex: 50, weight: 2, floral: 1, ribbon: 0.5 } },
+      { id: "grad", name: "Graduation Display", fill: "air", buildHours: 1, desc: "Celebrate results day with a personalised display.", recipe: { latex: 100, foil: 2, weight: 2, glue: 0.5 } },
+      { id: "number", name: "Number Display", fill: "air", buildHours: 0.75, desc: "Big foil numbers dressed with a balloon cluster.", recipe: { foil: 2, latex: 50, weight: 2, ribbon: 0.5 } },
+      { id: "helium9", name: "Helium Bouquet (9)", fill: "helium", buildHours: 0.5, desc: "Nine helium balloons, ribboned and weighted. Same-day delivery.", recipe: { latex: 15, helium: 0.3, ribbon: 1, weight: 1 } },
     ],
     sizes: [
       { id: "petite", name: "Petite", mult: 0.7 },

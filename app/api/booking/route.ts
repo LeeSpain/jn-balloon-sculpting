@@ -57,6 +57,7 @@ export async function POST(req: Request) {
   const id = "JN-" + (1044 + store.orders.length);
   const total = zoneOk ? priced.price + (zone!.fee as number) : priced.price;
   const deposit = depositFor(store, total);
+  const payInFull = store.settings.depositType === "full";
 
   const order: Order = {
     id,
@@ -87,7 +88,7 @@ export async function POST(req: Request) {
           {
             price_data: {
               currency: "gbp",
-              product_data: { name: `${product.name} (${size.name}) — deposit · ${id}` },
+              product_data: { name: `${product.name} (${size.name}) — ${payInFull ? "full payment" : "deposit"} · ${id}` },
               unit_amount: Math.round(deposit * 100),
             },
             quantity: 1,
@@ -110,7 +111,9 @@ export async function POST(req: Request) {
   await notifyNewBooking(order, product.name);
 
   const message = isBooking
-    ? `Booking request ${id} received! We’ll confirm within 24 hours — your ${gbp(deposit)} deposit secures the date once confirmed. (Pay on confirmation — card payments not yet enabled.)`
+    ? payInFull
+      ? `Booking request ${id} received! We’ll confirm within 24 hours — paying ${gbp(total)} in full secures your date once confirmed. (Pay on confirmation — card payments not yet enabled.)`
+      : `Booking request ${id} received! We’ll confirm within 24 hours — your ${gbp(deposit)} deposit secures the date once confirmed. (Pay on confirmation — card payments not yet enabled.)`
     : `Custom quote request ${id} sent — Jade & Nicole will reply within 24 hours with a personal price.`;
 
   return NextResponse.json({ message });

@@ -1,6 +1,6 @@
 // J&N Balloon Sculpting — pricing engine
 // Ported verbatim (logic-preserving) from the design bundle's engine.js.
-import type { Product, Store, PriceBreakdown, Zone } from "./types";
+import type { Product, Store, PriceBreakdown, Zone, Material } from "./types";
 
 export function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -17,13 +17,52 @@ export function offsetDate(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Cost of a single individual unit (e.g. one balloon out of a pack of 100).
+export function perUnitCost(m: Material): number {
+  const packSize = m.packSize && m.packSize > 0 ? m.packSize : 1;
+  return m.cost / packSize;
+}
+
 export function materialCost(store: Store, product: Product, sizeMult = 1): number {
   let sum = 0;
   for (const [mid, qty] of Object.entries(product.recipe || {})) {
     const m = store.materials.find((x) => x.id === mid);
-    if (m) sum += m.cost * qty * sizeMult;
+    if (m) sum += perUnitCost(m) * qty * sizeMult;
   }
   return sum;
+}
+
+export interface RecipeLine {
+  id: string;
+  name: string;
+  unitLabel: string; // "balloon", "roll", "each" …
+  qty: number; // individual units used (already size-adjusted)
+  perUnit: number; // cost of one unit
+  lineCost: number; // perUnit * qty
+  packSize: number;
+}
+
+// Break a product's material cost into individual line items — e.g.
+// "Latex balloon × 200 @ £0.065 = £13.00" — so the cost is never just one lump.
+export function recipeBreakdown(store: Store, product: Product, sizeMult = 1): RecipeLine[] {
+  const lines: RecipeLine[] = [];
+  for (const [mid, qty] of Object.entries(product.recipe || {})) {
+    const m = store.materials.find((x) => x.id === mid);
+    if (!m) continue;
+    const packSize = m.packSize && m.packSize > 0 ? m.packSize : 1;
+    const perUnit = perUnitCost(m);
+    const q = qty * sizeMult;
+    lines.push({
+      id: mid,
+      name: m.name,
+      unitLabel: m.unitLabel || m.unit,
+      qty: q,
+      perUnit,
+      lineCost: perUnit * q,
+      packSize,
+    });
+  }
+  return lines;
 }
 
 export function priceProduct(store: Store, product: Product, sizeMult = 1): PriceBreakdown {

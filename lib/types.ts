@@ -24,8 +24,10 @@ export interface Settings {
 export interface Material {
   id: string;
   name: string;
-  unit: string;
-  cost: number;
+  unit: string; // how it's purchased, e.g. "pack", "roll", "each"
+  cost: number; // cost per purchase unit (per pack/roll/each)
+  packSize?: number; // individual units per purchase unit (e.g. 100 balloons per pack); defaults to 1
+  unitLabel?: string; // name of a single unit, e.g. "balloon" — used when packSize > 1
   stock?: number;
   lowAt?: number;
 }

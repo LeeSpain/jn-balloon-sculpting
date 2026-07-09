@@ -1,6 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Nunito } from "next/font/google";
 import "./globals.css";
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const title = "J&N Balloon Sculpting — Handcrafted balloon art, delivered";
+const description =
+  "Arches, garlands and centrepieces for birthdays, weddings and every celebration in between — handmade by Jade & Nicole and delivered across Cambridgeshire.";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -18,9 +23,51 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "J&N Balloon Sculpting — Handcrafted balloon art, delivered",
-  description:
-    "Arches, garlands and centrepieces for birthdays, weddings and every celebration in between — handmade by Jade & Nicole and delivered across Cambridgeshire.",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: title,
+    template: "%s · J&N Balloon Sculpting",
+  },
+  description,
+  applicationName: "J&N Balloon Sculpting",
+  authors: [{ name: "Jade & Nicole" }],
+  creator: "J&N Balloon Sculpting",
+  keywords: [
+    "balloon sculpting",
+    "balloon arch",
+    "balloon garland",
+    "balloon delivery",
+    "party balloons",
+    "wedding balloons",
+    "birthday balloons",
+    "Cambridgeshire",
+    "Huntingdon",
+    "Jade & Nicole",
+  ],
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    locale: "en_GB",
+    url: "/",
+    siteName: "J&N Balloon Sculpting",
+    title,
+    description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#4A2C4D",
+  colorScheme: "light",
 };
 
 export default function RootLayout({
