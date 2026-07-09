@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getRepository } from "@/lib/store";
 import { buildPublicData } from "@/lib/publicData";
 import { assetUrl } from "@/lib/assets";
@@ -20,8 +21,44 @@ export default async function HomePage({
     { name: "TikTok", url: data.settings.tiktok },
   ].filter((x) => x.url);
 
+  // LocalBusiness + Review structured data — helps Google show rich results and
+  // map/review eligibility for this Cambridgeshire delivery business.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://jnballoons.co.uk";
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: "J&N Balloon Sculpting",
+    description:
+      "Handcrafted balloon arches, garlands and centrepieces, delivered across Cambridgeshire by Jade & Nicole.",
+    image: `${siteUrl}/opengraph-image`,
+    url: siteUrl,
+    email: "hello@jnballoons.co.uk",
+    areaServed: "Cambridgeshire, UK",
+    address: { "@type": "PostalAddress", addressRegion: "Cambridgeshire", addressCountry: "GB" },
+    ...(socials.length ? { sameAs: socials.map((s) => s.url) } : {}),
+    ...(data.reviews.length
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: "5",
+            reviewCount: String(data.reviews.length),
+          },
+          review: data.reviews.map((r) => ({
+            "@type": "Review",
+            reviewRating: { "@type": "Rating", ratingValue: "5", bestRating: "5" },
+            author: { "@type": "Person", name: r.name },
+            reviewBody: r.text,
+          })),
+        }
+      : {}),
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Header */}
       <header
         className="sticky top-0 z-20"
@@ -31,7 +68,7 @@ export default async function HomePage({
           borderBottom: "1px solid #F3C6C6",
         }}
       >
-        <div className="max-w-site mx-auto flex items-center justify-between gap-4" style={{ padding: "14px 20px" }}>
+        <div className="max-w-site mx-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-1" style={{ padding: "14px 20px" }}>
           <a href="#top" className="no-underline flex flex-col leading-none">
             <span className="font-display text-[26px] font-bold">
               J<span className="text-gold">&amp;</span>N
@@ -40,14 +77,14 @@ export default async function HomePage({
               BALLOON SCULPTING
             </span>
           </a>
-          <nav className="flex gap-[22px] items-center font-bold text-sm">
-            <a href="#quote" className="no-underline">Get a quote</a>
-            <a href="#gallery" className="no-underline">Gallery</a>
-            <a href="#about" className="no-underline">About</a>
+          <nav className="flex flex-wrap gap-x-4 gap-y-1 items-center justify-end font-bold text-sm">
+            <a href="#quote" className="no-underline inline-flex items-center min-h-[44px] px-1">Get a quote</a>
+            <a href="#gallery" className="no-underline inline-flex items-center min-h-[44px] px-1">Gallery</a>
+            <a href="#about" className="no-underline inline-flex items-center min-h-[44px] px-1">About</a>
             <a
               href="#quote"
-              className="no-underline bg-coral text-white rounded-full"
-              style={{ padding: "9px 18px", boxShadow: "0 2px 8px rgba(255,111,97,0.35)" }}
+              className="no-underline inline-flex items-center bg-coral-deep text-white rounded-full"
+              style={{ padding: "10px 18px", minHeight: 44 }}
             >
               Book now
             </a>
@@ -66,7 +103,7 @@ export default async function HomePage({
         }}
       >
         <div>
-          <p className="m-0 mb-3.5 text-xs font-extrabold text-gold" style={{ letterSpacing: "3px" }}>
+          <p className="m-0 mb-3.5 text-xs font-extrabold text-gold-ink" style={{ letterSpacing: "3px" }}>
             CAMBRIDGESHIRE BASED
           </p>
           <h1 className="font-display font-bold m-0 mb-[18px]" style={{ fontSize: "clamp(34px, 5vw, 52px)", lineHeight: 1.12 }}>
@@ -78,22 +115,28 @@ export default async function HomePage({
           <div className="flex gap-3.5 flex-wrap items-center">
             <a
               href="#quote"
-              className="no-underline bg-coral text-white font-extrabold text-base rounded-full"
-              style={{ padding: "14px 28px", boxShadow: "0 4px 14px rgba(255,111,97,0.4)" }}
+              className="no-underline inline-flex items-center bg-coral-deep text-white font-extrabold text-base rounded-full"
+              style={{ padding: "14px 28px", minHeight: 48, boxShadow: "0 4px 14px rgba(201,64,47,0.35)" }}
             >
               Get an instant quote
             </a>
-            <a href="#gallery" className="no-underline font-bold text-[15px]" style={{ borderBottom: "2px solid #D4AF7A", paddingBottom: "2px" }}>
+            <a href="#gallery" className="no-underline inline-flex items-center font-bold text-[15px]" style={{ minHeight: 44, borderBottom: "2px solid #D4AF7A", paddingBottom: "2px" }}>
               See our work
             </a>
           </div>
         </div>
         <div
-          className="rounded-3xl overflow-hidden"
+          className="rounded-3xl overflow-hidden relative"
           style={{ boxShadow: "0 10px 30px rgba(74,44,77,0.12)", aspectRatio: "4/5", maxHeight: "440px" }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/hero-arch.png" alt="Blush and gold balloon arch" className="w-full h-full object-cover block" />
+          <Image
+            src="/images/hero-arch.png"
+            alt="Pastel blush and gold balloon arch handcrafted by J&N"
+            fill
+            priority
+            sizes="(max-width: 768px) 100vw, 480px"
+            className="object-cover"
+          />
         </div>
       </section>
 
@@ -104,8 +147,8 @@ export default async function HomePage({
             className="mb-5 rounded-2xl text-[14.5px] font-bold"
             style={{ background: "#F0F7F0", border: "2px solid #9DC49D", padding: "18px 20px", color: "#3c5a3c" }}
           >
-            Payment successful — booking {searchParams.booked} confirmed! Your deposit is paid; the balance is due
-            before delivery. A confirmation is on its way to you.
+            Payment successful — booking {searchParams.booked} confirmed! Your payment has been received and your
+            date is secured. A confirmation is on its way to you.
           </div>
         )}
         {searchParams?.cancelled && (
@@ -131,23 +174,23 @@ export default async function HomePage({
         <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
           {data.gallery.map((g) => (
             <figure key={g.id} className="m-0 rounded-[18px] overflow-hidden bg-white shadow-card">
-              <div
-                style={{
-                  aspectRatio: "1",
-                  backgroundColor: "#F8EDE9",
-                  backgroundImage: `url('${assetUrl(g.src)}')`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                }}
-              />
+              <div style={{ aspectRatio: "1", backgroundColor: "#F8EDE9", overflow: "hidden" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- gallery photos may be uploaded data: URLs, which next/image can't optimise */}
+                <img
+                  src={assetUrl(g.src)}
+                  alt={g.title}
+                  loading="lazy"
+                  className="w-full h-full object-cover block"
+                />
+              </div>
               <figcaption className="flex items-center justify-between gap-2" style={{ padding: "12px 14px" }}>
                 <span className="font-bold text-sm">{g.title}</span>
                 <CopyButton
                   hash="#quote"
                   idleLabel="Share"
                   copiedLabel="Copied ✓"
-                  className="cursor-pointer border-0 bg-cream text-gold font-extrabold text-xs rounded-full font-sans"
-                  style={{ padding: "8px 12px" }}
+                  className="cursor-pointer inline-flex items-center border-0 bg-cream text-gold-ink font-extrabold text-xs rounded-full font-sans"
+                  style={{ padding: "10px 14px", minHeight: 44 }}
                 />
               </figcaption>
             </figure>
@@ -167,7 +210,7 @@ export default async function HomePage({
                 <p className="m-0 mb-3.5 text-[15px] italic" style={{ lineHeight: 1.6 }}>
                   “{r.text}”
                 </p>
-                <footer className="font-extrabold text-[13.5px] text-gold">
+                <footer className="font-extrabold text-[13.5px] text-plum">
                   {r.name} <span className="text-plum-soft font-semibold">· {r.event}</span>
                 </footer>
               </blockquote>
@@ -184,8 +227,7 @@ export default async function HomePage({
       >
         <div className="flex gap-3.5">
           <div className="flex-1 rounded-[18px] overflow-hidden relative" style={{ aspectRatio: "3/4" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/about-jade.png" alt="Jade" className="w-full h-full object-cover block" />
+            <Image src="/images/about-jade.png" alt="Jade, co-founder of J&N Balloon Sculpting" fill sizes="(max-width: 768px) 45vw, 240px" className="object-cover" />
             <span
               className="absolute font-extrabold text-xs rounded-full"
               style={{ bottom: 10, left: "50%", transform: "translateX(-50%)", background: "rgba(251,247,242,0.92)", padding: "5px 12px" }}
@@ -194,8 +236,7 @@ export default async function HomePage({
             </span>
           </div>
           <div className="flex-1 rounded-[18px] overflow-hidden relative" style={{ aspectRatio: "3/4", marginTop: 28 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/about-nicole.png" alt="Nicole" className="w-full h-full object-cover block" />
+            <Image src="/images/about-nicole.png" alt="Nicole, co-founder of J&N Balloon Sculpting" fill sizes="(max-width: 768px) 45vw, 240px" className="object-cover" />
             <span
               className="absolute font-extrabold text-xs rounded-full"
               style={{ bottom: 10, left: "50%", transform: "translateX(-50%)", background: "rgba(251,247,242,0.92)", padding: "5px 12px" }}
@@ -205,7 +246,7 @@ export default async function HomePage({
           </div>
         </div>
         <div>
-          <p className="m-0 mb-2.5 text-xs font-extrabold text-gold" style={{ letterSpacing: "3px" }}>
+          <p className="m-0 mb-2.5 text-xs font-extrabold text-gold-ink" style={{ letterSpacing: "3px" }}>
             MEET JADE &amp; NICOLE
           </p>
           <h2 className="font-display m-0 mb-4" style={{ fontSize: "clamp(26px, 3.5vw, 36px)" }}>
@@ -244,7 +285,7 @@ export default async function HomePage({
             <CopyButton
               hash="#quote"
               idleLabel="Copy booking link"
-              className="cursor-pointer self-start bg-coral text-white border-0 font-sans font-extrabold text-[13.5px] rounded-full"
+              className="cursor-pointer self-start bg-coral-deep text-white border-0 font-sans font-extrabold text-[13.5px] rounded-full"
               style={{ padding: "11px 20px", minHeight: 44 }}
             />
             {socials.length > 0 && (

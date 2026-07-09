@@ -14,7 +14,12 @@ export function gbp(n: number | null | undefined): string {
 export function offsetDate(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  // Build the string from LOCAL date parts — toISOString() would read the UTC
+  // date and be a day off late in the evening (UK is ahead of UTC in summer).
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 // Cost of a single individual unit (e.g. one balloon out of a pack of 100).

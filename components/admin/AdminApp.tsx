@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Store, Order, OrderStatus } from "@/lib/types";
 import { priceProduct, consumeStock, gbp, round2, perUnitCost, recipeBreakdown } from "@/lib/pricing";
 import { assetUrl } from "@/lib/assets";
+import { uid } from "@/lib/ids";
 import { computeFinance } from "@/lib/finance";
 import FinanceTab from "./FinanceTab";
 import OrderDetailModal from "./OrderDetailModal";
@@ -64,7 +65,7 @@ const card = "bg-white rounded-2xl shadow-card";
 const numInput =
   "border-2 border-blush rounded-xl font-bold bg-cream text-plum font-sans";
 const fieldLabel =
-  "flex flex-col gap-1.5 text-[12.5px] font-extrabold text-gold";
+  "flex flex-col gap-1.5 text-[12.5px] font-extrabold text-gold-ink";
 
 function prettyDate(iso: string): string {
   return new Date(iso + "T12:00").toLocaleDateString("en-GB", {
@@ -123,7 +124,7 @@ export default function AdminApp({
     const src = await readImageFile(file);
     const title = file.name.replace(/\.[^.]+$/, "").slice(0, 60) || "New piece";
     commit((d) => {
-      d.gallery.push({ id: "g" + Date.now(), title, src });
+      d.gallery.push({ id: uid("g"), title, src });
     });
   }
 
@@ -189,6 +190,8 @@ export default function AdminApp({
       .filter((m) => m.stock != null && m.lowAt != null && m.stock <= m.lowAt)
       .map((m) => `${m.name} running low (${m.stock} left) — time to reorder.`);
     return { greeting, stats, upcoming, alerts };
+    // productById/sizeById derive from `store`, which is already a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store]);
 
   function orderTotal(o: Order) {
@@ -206,7 +209,12 @@ export default function AdminApp({
     commit((d) => {
       const o = d.orders.find((x) => x.id === orderId);
       if (!o) return;
-      if (next === "Materials purchased" && !o.stockTaken) {
+      // Consume stock the first time an order reaches "Materials purchased" OR
+      // any later stage — jumping straight to "In progress"/"Ready"/"Delivered"
+      // must not skip the deduction. Guarded by stockTaken so it runs once.
+      const materialsStageOrLater =
+        STATUSES.indexOf(next) >= STATUSES.indexOf("Materials purchased");
+      if (materialsStageOrLater && !o.stockTaken) {
         consumeStock(d, o.product, o.size);
         o.stockTaken = true;
       }
@@ -540,7 +548,7 @@ export default function AdminApp({
                 + Upload new photo
                 <input type="file" accept="image/*" onChange={(e) => { addGalleryPhoto(e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} />
               </label>
-              <button onClick={() => commit((d) => { d.gallery.push({ id: "g" + Date.now(), title: "New piece", src: (d.galleryImages || [])[0] || "" }); })} className="cursor-pointer bg-white text-plum font-sans font-extrabold text-[13.5px] rounded-full" style={{ border: "2px solid #F3C6C6", padding: "11px 20px", minHeight: 44 }}>+ Add from existing artwork</button>
+              <button onClick={() => commit((d) => { d.gallery.push({ id: uid("g"), title: "New piece", src: (d.galleryImages || [])[0] || "" }); })} className="cursor-pointer bg-white text-plum font-sans font-extrabold text-[13.5px] rounded-full" style={{ border: "2px solid #F3C6C6", padding: "11px 20px", minHeight: 44 }}>+ Add from existing artwork</button>
             </div>
             <p className="text-[12.5px] text-plum-soft" style={{ margin: "0 0 32px" }}>Upload a photo straight from your phone or computer to add or replace a gallery image — it appears on the website immediately. Photos are resized automatically to keep the site fast.</p>
 
@@ -555,7 +563,7 @@ export default function AdminApp({
                 </div>
               ))}
             </div>
-            <button onClick={() => commit((d) => { d.reviews.push({ id: "r" + Date.now(), text: "", name: "", event: "" }); })} className="cursor-pointer bg-plum text-white border-0 font-sans font-extrabold text-[13.5px] rounded-full" style={{ padding: "11px 20px", marginBottom: 32, minHeight: 44 }}>+ Add review</button>
+            <button onClick={() => commit((d) => { d.reviews.push({ id: uid("r"), text: "", name: "", event: "" }); })} className="cursor-pointer bg-plum text-white border-0 font-sans font-extrabold text-[13.5px] rounded-full" style={{ padding: "11px 20px", marginBottom: 32, minHeight: 44 }}>+ Add review</button>
 
             <h2 className="font-display m-0 mb-3.5" style={{ fontSize: 22 }}>Colour themes (quote builder)</h2>
             <div className="flex gap-2.5 flex-wrap items-center mb-3">

@@ -11,9 +11,11 @@ const config: Config = {
         // J&N brand palette (from the design bundle)
         cream: "#FBF7F2",
         plum: "#4A2C4D",
-        coral: "#FF6F61",
+        coral: "#FF6F61", // bright brand accent — decorative / on-dark use
         "coral-dark": "#e85d4f",
-        gold: "#D4AF7A",
+        "coral-deep": "#c9402f", // WCAG-AA (4.9:1 vs white) — solid buttons & text on light
+        gold: "#D4AF7A", // on plum/dark only
+        "gold-ink": "#8a6a3a", // WCAG-AA (4.6:1 vs cream) — labels on light backgrounds
         blush: "#F3C6C6",
         "plum-soft": "#7a5f7d",
       },

@@ -10,6 +10,8 @@ import {
 } from "@/lib/pricing";
 import { serverStripeEnabled } from "@/lib/publicData";
 import { notifyNewBooking } from "@/lib/notify";
+import { nextOrderId } from "@/lib/ids";
+import { sameOrigin, rateLimit, clientIp } from "@/lib/security";
 import type { Order } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -25,48 +27,81 @@ interface Body {
   custContact: string;
 }
 
+// Trim + hard-cap a free-text field so a hostile client can't store megabytes.
+function clean(v: unknown, max: number): string {
+  return String(v ?? "").trim().slice(0, max);
+}
+
 export async function POST(req: Request) {
-  let body: Body;
+  if (!sameOrigin(req)) {
+    return NextResponse.json({ error: "Bad origin." }, { status: 403 });
+  }
+  // Throttle abuse of this public endpoint (it creates orders + Stripe sessions).
+  if (!rateLimit(`booking:${clientIp(req)}`, 12, 10 * 60 * 1000)) {
+    return NextResponse.json(
+      { error: "Too many requests — please try again in a few minutes." },
+      { status: 429 },
+    );
+  }
+
+  let raw: Partial<Body>;
   try {
-    body = await req.json();
+    raw = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  const custName = (body.custName || "").trim();
-  const custContact = (body.custContact || "").trim();
-  if (!custName || !custContact) {
+  const body: Body = {
+    kind: raw.kind === "custom" ? "custom" : "book",
+    productId: clean(raw.productId, 60),
+    sizeId: clean(raw.sizeId, 60),
+    theme: clean(raw.theme, 80),
+    postcode: clean(raw.postcode, 12),
+    date: clean(raw.date, 10),
+    custName: clean(raw.custName, 120),
+    custContact: clean(raw.custContact, 160),
+  };
+
+  if (!body.custName || !body.custContact) {
     return NextResponse.json(
       { error: "Please add your name and a mobile number or email so we can confirm your booking." },
-      { status: 400 }
+      { status: 400 },
     );
+  }
+  // Date must be an ISO yyyy-mm-dd if provided.
+  if (body.date && !/^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
+    return NextResponse.json({ error: "Invalid delivery date." }, { status: 400 });
   }
 
   const repo = getRepository();
   const store = await repo.read();
 
   const product = store.products.find((p) => p.id === body.productId) || store.products[0];
-  const size = store.sizes.find((s) => s.id === body.sizeId) || store.sizes[1] || store.sizes[0];
-  const zone = body.postcode?.trim() ? zoneForPostcode(store, body.postcode) : null;
+  // Resolve size the SAME way the client does; fall back to the mult-1 size.
+  const size =
+    store.sizes.find((s) => s.id === body.sizeId) ||
+    store.sizes.find((s) => s.mult === 1) ||
+    store.sizes[0];
+  const zone = body.postcode ? zoneForPostcode(store, body.postcode) : null;
 
   const priced = priceProduct(store, product, size.mult);
   const zoneOk = !!zone && zone.fee != null;
   const dateOk = !!body.date && body.date >= minDate(store);
   const isBooking = body.kind === "book" && zoneOk && dateOk;
 
-  const id = "JN-" + (1044 + store.orders.length);
+  const id = nextOrderId(store.orders.map((o) => o.id));
   const total = zoneOk ? priced.price + (zone!.fee as number) : priced.price;
   const deposit = depositFor(store, total);
   const payInFull = store.settings.depositType === "full";
 
   const order: Order = {
     id,
-    customer: isBooking ? custName : `${custName} (custom enquiry)`,
-    phone: custContact,
+    customer: isBooking ? body.custName : `${body.custName} (custom enquiry)`,
+    phone: body.custContact,
     product: product.id,
     size: size.id,
     theme: body.theme || store.themes[0],
-    postcode: (body.postcode || "").toUpperCase(),
+    postcode: body.postcode.toUpperCase(),
     address: "",
     date: body.date || minDate(store),
     price: isBooking ? priced.price : 0,
@@ -75,11 +110,13 @@ export async function POST(req: Request) {
     depositPaid: 0,
   };
 
-  // Real deposit payment via Stripe Checkout (server-side, env-driven).
+  // Real payment via Stripe Checkout (server-side, env-driven).
   if (isBooking && serverStripeEnabled()) {
     try {
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
+      // Mark as awaiting payment until the webhook confirms it.
+      order.awaitingPayment = true;
       store.orders.unshift(order);
       await repo.write(store);
       const session = await stripe.checkout.sessions.create({
@@ -88,13 +125,15 @@ export async function POST(req: Request) {
           {
             price_data: {
               currency: "gbp",
-              product_data: { name: `${product.name} (${size.name}) — ${payInFull ? "full payment" : "deposit"} · ${id}` },
+              product_data: {
+                name: `${product.name} (${size.name}) — ${payInFull ? "full payment" : "deposit"} · ${id}`,
+              },
               unit_amount: Math.round(deposit * 100),
             },
             quantity: 1,
           },
         ],
-        customer_email: custContact.includes("@") ? custContact : undefined,
+        customer_email: body.custContact.includes("@") ? body.custContact : undefined,
         success_url: `${siteUrl}/?booked=${id}#quote`,
         cancel_url: `${siteUrl}/?cancelled=${id}#quote`,
         metadata: { orderId: id },

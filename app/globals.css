@@ -19,8 +19,14 @@ a:hover {
   color: #ff6f61;
 }
 
-/* Match the prototype's focus accent on form controls */
-input,
-select {
-  outline-color: #d4af7a;
+/* Visible keyboard focus for every interactive element. Coral reads clearly on
+   both the cream light sections and the plum dark footer/header. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid #ff6f61;
+  outline-offset: 2px;
+  border-radius: 6px;
 }

@@ -93,6 +93,7 @@ export interface Order {
   status: OrderStatus;
   depositPaid?: number;
   stockTaken?: boolean;
+  awaitingPayment?: boolean; // true until Stripe confirms payment via webhook
 }
 
 export interface Store {

@@ -40,9 +40,17 @@ const input =
   "border-2 border-blush rounded-xl px-3.5 py-3 text-base bg-cream text-plum";
 const label = "flex flex-col gap-1.5 text-[12.5px] font-bold flex-1 min-w-[180px]";
 
+// The default size is the mult-1 ("standard") size if present, else the middle
+// size, else the first — never a hardcoded id that might not exist.
+function defaultSizeId(sizes: PublicData["sizes"]): string {
+  if (!sizes.length) return "standard";
+  const standard = sizes.find((s) => s.mult === 1);
+  return (standard ?? sizes[Math.floor(sizes.length / 2)] ?? sizes[0]).id;
+}
+
 export default function QuoteBuilder({ data }: { data: PublicData }) {
   const [productId, setProductId] = useState(data.products[0]?.id ?? "arch");
-  const [sizeId, setSizeId] = useState("standard");
+  const [sizeId, setSizeId] = useState(() => defaultSizeId(data.sizes));
   const [theme, setTheme] = useState(data.themes[0] ?? "Blush & gold");
   const [postcode, setPostcode] = useState("");
   const [date, setDate] = useState("");
@@ -54,7 +62,10 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
 
   const s = data.settings;
   const product = data.products.find((p) => p.id === productId) ?? data.products[0];
-  const size = data.sizes.find((z) => z.id === sizeId) ?? data.sizes[1] ?? data.sizes[0];
+  const size =
+    data.sizes.find((z) => z.id === sizeId) ??
+    data.sizes.find((z) => z.mult === 1) ??
+    data.sizes[0];
 
   const q = useMemo(() => {
     const zone = postcode.trim() ? zoneForPostcode(data.zones, postcode) : null;
@@ -73,7 +84,9 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
       }
     }
 
-    const basePrice = product.priceBySize[sizeId] ?? product.fromPrice;
+    // Price the RESOLVED size (matches the server), never the raw sizeId — so
+    // the customer is never shown a price we won't charge.
+    const basePrice = product.priceBySize[size.id] ?? product.fromPrice;
     const zoneOk = !!zone && zone.fee != null;
     const dateOk = !!date && date >= data.minDate;
     const quoteReady = zoneOk && dateOk;
@@ -117,7 +130,7 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
           : `Pay ${gbp(deposit)} deposit`
         : "Book now",
     };
-  }, [postcode, date, product, sizeId, s, data.zones, data.minDate]);
+  }, [postcode, date, product, size, s, data.zones, data.minDate]);
 
   const sel = (on: boolean) =>
     on
@@ -128,6 +141,17 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
     if (!custName.trim() || !custContact.trim()) {
       setWarnMsg(
         "Please add your name and a mobile number or email (step 5) so we can confirm your booking."
+      );
+      setBookedMsg(null);
+      return false;
+    }
+    // Light sanity check: a real email or a phone number with enough digits.
+    const c = custContact.trim();
+    const looksEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c);
+    const looksPhone = (c.match(/\d/g) || []).length >= 7;
+    if (!looksEmail && !looksPhone) {
+      setWarnMsg(
+        "That contact doesn’t look right — please enter a valid email or a phone number so we can reach you."
       );
       setBookedMsg(null);
       return false;
@@ -172,7 +196,7 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
 
   return (
     <div className="bg-white rounded-3xl shadow-panel" style={{ padding: "clamp(22px, 4vw, 40px)" }}>
-      <p className="m-0 mb-1.5 text-xs font-extrabold text-gold" style={{ letterSpacing: "3px" }}>
+      <p className="m-0 mb-1.5 text-xs font-extrabold text-gold-ink" style={{ letterSpacing: "3px" }}>
         INSTANT QUOTE
       </p>
       <h2 className="font-display m-0 mb-2" style={{ fontSize: "clamp(26px, 3.5vw, 36px)" }}>
@@ -184,7 +208,7 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
 
       {/* 1. Choose your piece */}
       <h3 className="text-sm font-extrabold m-0 mb-3">
-        <span className="text-coral">1.</span> Choose your piece
+        <span className="text-coral-deep">1.</span> Choose your piece
       </h3>
       <div
         className="grid gap-3 mb-7"
@@ -197,13 +221,17 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
               setProductId(p.id);
               setBookedMsg(null);
             }}
+            aria-pressed={p.id === productId}
             className="text-left cursor-pointer rounded-2xl p-3.5 border-2 flex flex-col gap-1.5 font-sans text-plum"
             style={{ minHeight: 44, ...sel(p.id === productId) }}
           >
-            <span className="font-extrabold text-[15px]">{p.name}</span>
+            <span className="font-extrabold text-[15px]">
+              {p.id === productId && <span aria-hidden>✓ </span>}
+              {p.name}
+            </span>
             <span className="text-[12.5px] leading-snug text-plum-soft">{p.desc}</span>
             <span className="flex gap-1.5 items-center mt-auto">
-              <span className="font-extrabold text-sm text-coral">from {gbp(p.fromPrice)}</span>
+              <span className="font-extrabold text-sm text-coral-deep">from {gbp(p.fromPrice)}</span>
               {p.helium && (
                 <span
                   className="text-[10px] font-extrabold bg-blush rounded-full"
@@ -219,7 +247,7 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
 
       {/* 2. Pick a size */}
       <h3 className="text-sm font-extrabold m-0 mb-3">
-        <span className="text-coral">2.</span> Pick a size
+        <span className="text-coral-deep">2.</span> Pick a size
       </h3>
       <div className="flex gap-2.5 flex-wrap mb-7">
         {data.sizes.map((z) => (
@@ -229,26 +257,30 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
               setSizeId(z.id);
               setBookedMsg(null);
             }}
+            aria-pressed={z.id === sizeId}
             className="cursor-pointer rounded-full border-2 font-sans text-plum font-bold text-sm"
             style={{ padding: "11px 20px", minHeight: 44, ...sel(z.id === sizeId) }}
           >
-            {z.name} · <span className="text-coral font-extrabold">{gbp(product.priceBySize[z.id])}</span>
+            {z.id === sizeId && <span aria-hidden>✓ </span>}
+            {z.name} · <span className="text-coral-deep font-extrabold">{gbp(product.priceBySize[z.id])}</span>
           </button>
         ))}
       </div>
 
       {/* 3. Colours & theme */}
       <h3 className="text-sm font-extrabold m-0 mb-3">
-        <span className="text-coral">3.</span> Colours &amp; theme
+        <span className="text-coral-deep">3.</span> Colours &amp; theme
       </h3>
       <div className="flex gap-2.5 flex-wrap mb-7">
         {data.themes.map((t) => (
           <button
             key={t}
             onClick={() => setTheme(t)}
+            aria-pressed={t === theme}
             className="cursor-pointer rounded-full border-2 font-sans text-plum font-bold text-sm"
             style={{ padding: "11px 20px", minHeight: 44, ...sel(t === theme) }}
           >
+            {t === theme && <span aria-hidden>✓ </span>}
             {t}
           </button>
         ))}
@@ -256,7 +288,7 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
 
       {/* 4. Delivery */}
       <h3 className="text-sm font-extrabold m-0 mb-3">
-        <span className="text-coral">4.</span> Delivery
+        <span className="text-coral-deep">4.</span> Delivery
       </h3>
       <div className="flex gap-3.5 flex-wrap mb-2.5">
         <label className={label}>
@@ -289,7 +321,7 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
 
       {/* 5. Your details */}
       <h3 className="text-sm font-extrabold m-0 mb-3">
-        <span className="text-coral">5.</span> Your details
+        <span className="text-coral-deep">5.</span> Your details
       </h3>
       <div className="flex gap-3.5 flex-wrap mb-6">
         <label className={label}>
@@ -321,11 +353,14 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
       {/* Quote result */}
       {q.quoteReady && (
         <div
+          role="status"
+          aria-live="polite"
           className="rounded-[20px] text-white flex flex-wrap gap-5 items-center justify-between"
           style={{
-            background: "linear-gradient(135deg, #FF6F61, #ff8a7d)",
+            // Darkened so white text clears WCAG AA on the whole panel.
+            background: "linear-gradient(135deg, #c9402f, #b8382a)",
             padding: "clamp(20px, 3vw, 30px)",
-            boxShadow: "0 8px 24px rgba(255,111,97,0.35)",
+            boxShadow: "0 8px 24px rgba(201,64,47,0.35)",
           }}
         >
           <div>
@@ -353,7 +388,7 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
             <button
               onClick={() => submit("book")}
               disabled={submitting}
-              className="cursor-pointer bg-white text-coral border-0 font-sans font-extrabold text-base rounded-full disabled:opacity-70"
+              className="cursor-pointer bg-white text-coral-deep border-0 font-sans font-extrabold text-base rounded-full disabled:opacity-70"
               style={{ padding: "14px 30px", minHeight: 48 }}
             >
               {submitting ? "…" : q.bookLabel}
@@ -391,6 +426,8 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
 
       {bookedMsg && (
         <div
+          role="status"
+          aria-live="polite"
           className="mt-4 rounded-2xl text-[14.5px] font-bold"
           style={{ background: "#F0F7F0", border: "2px solid #9DC49D", padding: "18px 20px", color: "#3c5a3c" }}
         >
@@ -400,6 +437,7 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
 
       {warnMsg && (
         <div
+          role="alert"
           className="mt-4 rounded-2xl text-[14.5px] font-bold"
           style={{ background: "#FFF3F1", border: "2px solid #FF6F61", padding: "18px 20px", color: "#c14a3e" }}
         >

@@ -42,7 +42,7 @@ export default function AdminLogin() {
           J<span className="text-gold">&amp;</span>N <span className="text-gold text-sm align-middle">ADMIN</span>
         </p>
         <p className="text-plum-soft text-sm m-0 mt-1 mb-6">Enter your password to continue.</p>
-        <label className="flex flex-col gap-1.5 text-[12.5px] font-extrabold text-gold" style={{ letterSpacing: "1px" }}>
+        <label className="flex flex-col gap-1.5 text-[12.5px] font-extrabold text-gold-ink" style={{ letterSpacing: "1px" }}>
           PASSWORD
           <input
             type="password"
@@ -52,11 +52,11 @@ export default function AdminLogin() {
             className="border-2 border-blush rounded-xl px-3 py-2.5 text-base bg-cream text-plum font-sans"
           />
         </label>
-        {error && <p className="text-[13.5px] font-bold mt-3 mb-0" style={{ color: "#c14a3e" }}>{error}</p>}
+        {error && <p role="alert" className="text-[13.5px] font-bold mt-3 mb-0" style={{ color: "#c14a3e" }}>{error}</p>}
         <button
           type="submit"
           disabled={busy}
-          className="cursor-pointer bg-coral text-white border-0 font-sans font-extrabold text-base rounded-full w-full mt-5 disabled:opacity-70"
+          className="cursor-pointer bg-coral-deep text-white border-0 font-sans font-extrabold text-base rounded-full w-full mt-5 disabled:opacity-70"
           style={{ padding: "13px 20px", minHeight: 48 }}
         >
           {busy ? "…" : "Log in"}
