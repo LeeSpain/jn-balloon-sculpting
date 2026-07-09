@@ -6,7 +6,8 @@
 // frames and resources from third-party origins.
 const csp = [
   "default-src 'self'",
-  "img-src 'self' data: blob:",
+  // Allow admin-uploaded images served from Vercel Blob storage.
+  "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com",
   "style-src 'self' 'unsafe-inline'",
   "script-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",

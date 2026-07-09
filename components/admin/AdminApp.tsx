@@ -1,23 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Store, Order, OrderStatus } from "@/lib/types";
+import type { Store, Order, OrderStatus, SiteImages } from "@/lib/types";
 import { priceProduct, consumeStock, gbp, round2, perUnitCost, recipeBreakdown } from "@/lib/pricing";
 import { assetUrl } from "@/lib/assets";
 import { uid } from "@/lib/ids";
+import { DEFAULT_IMAGES } from "@/lib/seed";
 import { computeFinance } from "@/lib/finance";
 import FinanceTab from "./FinanceTab";
 import OrderDetailModal from "./OrderDetailModal";
 
-// Read a chosen image file, downscale it to a sensible max dimension and
-// re-encode as a compressed JPEG data URL. Keeping images small matters because
-// the whole store (gallery included) is saved as one JSON document.
-async function readImageFile(
+// Downscale a chosen image on the client and return a compressed Blob. Vector
+// and animated formats are passed through untouched. Photos become JPEG; logos
+// and favicons keep transparency as PNG.
+async function compressImage(
   file: File,
-  maxDim = 1000,
+  maxDim: number,
+  mime: "image/jpeg" | "image/png",
   quality = 0.82,
-): Promise<string> {
+): Promise<Blob> {
+  if (/svg|gif|icon/.test(file.type)) return file; // don't rasterise these
   const dataUrl: string = await new Promise((resolve, reject) => {
     const fr = new FileReader();
     fr.onload = () => resolve(fr.result as string);
@@ -25,21 +28,19 @@ async function readImageFile(
     fr.readAsDataURL(file);
   });
   return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-      const width = Math.round(img.width * scale);
-      const height = Math.round(img.height * scale);
+    const image = new Image();
+    image.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(image.width, image.height));
       const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = Math.round(image.width * scale);
+      canvas.height = Math.round(image.height * scale);
       const ctx = canvas.getContext("2d");
-      if (!ctx) return resolve(dataUrl);
-      ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL("image/jpeg", quality));
+      if (!ctx) return resolve(file);
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((b) => resolve(b || file), mime, quality);
     };
-    img.onerror = () => resolve(dataUrl);
-    img.src = dataUrl;
+    image.onerror = () => resolve(file);
+    image.src = dataUrl;
   });
 }
 
@@ -91,41 +92,113 @@ export default function AdminApp({
   const [tab, setTab] = useState<Tab>("overview");
   const [newTheme, setNewTheme] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState<string>("");
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
 
   const selectedOrder = selectedOrderId
     ? store.orders.find((o) => o.id === selectedOrderId) ?? null
     : null;
 
-  // Apply a mutation to a clone, update UI immediately, persist server-side.
-  function commit(mutator: (draft: Store) => void) {
+  // Apply a mutation to a clone, update the UI immediately, then persist to the
+  // shared store — AWAITING the response so failures are surfaced, not swallowed.
+  async function commit(mutator: (draft: Store) => void) {
     const draft: Store = structuredClone(store);
     mutator(draft);
     setStore(draft);
-    fetch("/api/admin/store", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ store: draft }),
-    }).catch(() => {});
+    setSaveState("saving");
+    try {
+      const res = await fetch("/api/admin/store", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ store: draft }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || `Save failed (${res.status})`);
+      }
+      setSaveState("saved");
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => setSaveState("idle"), 2000);
+    } catch (e) {
+      setSaveState("error");
+      setSaveError(e instanceof Error ? e.message : "Save failed");
+      // Re-sync from the server so the UI reflects what actually persisted.
+      try {
+        const r = await fetch("/api/admin/store");
+        if (r.ok) {
+          const j = await r.json();
+          if (j.store) setStore(j.store);
+        }
+      } catch {
+        /* leave optimistic state; user can retry */
+      }
+    }
   }
 
-  // Replace an existing gallery item's photo with an uploaded image.
+  // Compress an image, upload it to the shared store, and return its URL.
+  // Returns null on failure (and flags the error in the save indicator).
+  async function uploadImage(
+    file: File,
+    opts: { maxDim?: number; mime?: "image/jpeg" | "image/png" } = {},
+  ): Promise<string | null> {
+    setSaveState("saving");
+    try {
+      const blob = await compressImage(file, opts.maxDim ?? 1400, opts.mime ?? "image/jpeg");
+      const fd = new FormData();
+      const ext = (blob.type || file.type).includes("png") ? "png" : (blob.type || file.type).includes("svg") ? "svg" : "jpg";
+      fd.append("file", blob, `upload.${ext}`);
+      const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || `Upload failed (${res.status})`);
+      }
+      const { url } = await res.json();
+      return url as string;
+    } catch (e) {
+      setSaveState("error");
+      setSaveError(e instanceof Error ? e.message : "Upload failed");
+      return null;
+    }
+  }
+
+  // ---- image slot helpers (hero, about, logo, favicon, OG) ----
+  async function uploadSiteImage(slot: keyof SiteImages, file: File | undefined) {
+    if (!file) return;
+    const isMark = slot === "logo" || slot === "favicon";
+    const url = await uploadImage(file, {
+      maxDim: slot === "favicon" ? 512 : isMark ? 600 : slot === "ogImage" ? 1200 : 1600,
+      mime: isMark ? "image/png" : "image/jpeg",
+    });
+    if (url) await commit((d) => { d.images[slot] = url; });
+  }
+  function resetSiteImage(slot: keyof SiteImages) {
+    commit((d) => { d.images[slot] = DEFAULT_IMAGES[slot]; });
+  }
+
+  // ---- gallery photo helpers (now upload → URL, not inline data) ----
   async function changeGalleryPhoto(index: number, file: File | undefined) {
     if (!file) return;
-    const src = await readImageFile(file);
-    commit((d) => {
-      d.gallery[index].src = src;
-    });
+    const url = await uploadImage(file, { maxDim: 1200 });
+    if (url) await commit((d) => { d.gallery[index].src = url; });
   }
-
-  // Add a brand-new gallery item from an uploaded image.
   async function addGalleryPhoto(file: File | undefined) {
     if (!file) return;
-    const src = await readImageFile(file);
+    const url = await uploadImage(file, { maxDim: 1200 });
+    if (!url) return;
     const title = file.name.replace(/\.[^.]+$/, "").slice(0, 60) || "New piece";
-    commit((d) => {
-      d.gallery.push({ id: uid("g"), title, src });
-    });
+    await commit((d) => { d.gallery.push({ id: uid("g"), title, src: url }); });
+  }
+
+  // ---- product photo helpers ----
+  async function uploadProductImage(index: number, file: File | undefined) {
+    if (!file) return;
+    const url = await uploadImage(file, { maxDim: 1000 });
+    if (url) await commit((d) => { d.products[index].image = url; });
+  }
+  function resetProductImage(index: number) {
+    commit((d) => { delete d.products[index].image; });
   }
 
   async function resetData() {
@@ -235,7 +308,31 @@ export default function AdminApp({
             </span>
             <span className="text-xs font-extrabold text-gold" style={{ letterSpacing: "2px" }}>ADMIN</span>
           </div>
-          <div className="flex gap-3.5 items-center">
+          <div className="flex gap-3.5 items-center flex-wrap">
+            <span
+              role="status"
+              aria-live="polite"
+              title={saveState === "error" ? saveError : undefined}
+              className="text-xs font-extrabold rounded-full"
+              style={{
+                padding: "6px 12px",
+                minHeight: 30,
+                display: "inline-flex",
+                alignItems: "center",
+                background:
+                  saveState === "saved" ? "#E4F0E4" : saveState === "error" ? "#FFE3DF" : "rgba(251,247,242,0.15)",
+                color:
+                  saveState === "saved" ? "#3c7a3c" : saveState === "error" ? "#c14a3e" : "#FBF7F2",
+              }}
+            >
+              {saveState === "saving"
+                ? "Saving…"
+                : saveState === "saved"
+                ? "Saved ✓"
+                : saveState === "error"
+                ? "Save failed — retry"
+                : "All changes saved"}
+            </span>
             <a href="/" className="text-[13.5px] font-bold no-underline" style={{ color: "#F3C6C6" }}>View site →</a>
             <button onClick={resetData} className="cursor-pointer bg-transparent font-sans text-xs font-bold rounded-full" style={{ border: "1px solid rgba(251,247,242,0.35)", color: "#FBF7F2", padding: "8px 14px" }}>
               Reset demo data
@@ -509,7 +606,34 @@ export default function AdminApp({
         {tab === "content" && (
           <>
             <h1 className="font-display m-0 mb-1" style={{ fontSize: 30 }}>Site content</h1>
-            <p className="m-0 mb-6 text-plum-soft text-[15px]">Gallery, reviews and colour themes — changes appear on the website straight away.</p>
+            <p className="m-0 mb-6 text-plum-soft text-[15px]">Images, gallery, reviews and colour themes — changes appear on the website on the next refresh.</p>
+
+            <h2 className="font-display m-0 mb-1.5" style={{ fontSize: 22 }}>Images</h2>
+            <p className="m-0 mb-3.5 text-plum-soft text-[13px]">Every image on the site is managed here. Uploads are saved to shared storage and shown on the website on the next refresh. Photos are resized automatically.</p>
+            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))" }}>
+              <ImageSlot label="Homepage hero" hint="Main banner beside the headline" src={store.images.hero} onUpload={(f) => uploadSiteImage("hero", f)} onReset={() => resetSiteImage("hero")} />
+              <ImageSlot label="About — Jade" hint="Portrait in the About section" src={store.images.aboutJade} onUpload={(f) => uploadSiteImage("aboutJade", f)} onReset={() => resetSiteImage("aboutJade")} />
+              <ImageSlot label="About — Nicole" hint="Portrait in the About section" src={store.images.aboutNicole} onUpload={(f) => uploadSiteImage("aboutNicole", f)} onReset={() => resetSiteImage("aboutNicole")} />
+              <ImageSlot label="Logo" hint="Header logo — blank uses the J&N wordmark" src={store.images.logo} accept="image/png,image/svg+xml,image/jpeg,image/webp" emptyLabel="Text wordmark (default)" onUpload={(f) => uploadSiteImage("logo", f)} onReset={() => resetSiteImage("logo")} />
+              <ImageSlot label="Favicon" hint="Browser-tab icon" src={store.images.favicon} accept="image/png,image/x-icon,image/svg+xml" emptyLabel="Generated monogram (default)" onUpload={(f) => uploadSiteImage("favicon", f)} onReset={() => resetSiteImage("favicon")} />
+              <ImageSlot label="Social share image" hint="Preview when the link is posted to Instagram/Facebook" src={store.images.ogImage} emptyLabel="Auto-designed card (default)" onUpload={(f) => uploadSiteImage("ogImage", f)} onReset={() => resetSiteImage("ogImage")} />
+            </div>
+
+            <h3 className="font-display m-0 mt-5 mb-1.5" style={{ fontSize: 17 }}>Product photos</h3>
+            <p className="m-0 mb-3.5 text-plum-soft text-[13px]">Optional photo shown on each product card in the quote builder.</p>
+            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", marginBottom: 32 }}>
+              {store.products.map((p, i) => (
+                <ImageSlot
+                  key={p.id}
+                  label={p.name}
+                  hint="Quote-builder product card"
+                  src={p.image || ""}
+                  emptyLabel="No photo (name + price only)"
+                  onUpload={(f) => uploadProductImage(i, f)}
+                  onReset={p.image ? () => resetProductImage(i) : undefined}
+                />
+              ))}
+            </div>
 
             <h2 className="font-display m-0 mb-3.5" style={{ fontSize: 22 }}>Gallery</h2>
             <div className="flex flex-col gap-2.5 mb-3.5">
@@ -687,6 +811,89 @@ function Row({
     <div className="flex justify-between text-[13.5px]" style={{ padding: "4px 0", borderTop: border ? "1px solid #FBF7F2" : undefined }}>
       <span className="text-plum-soft">{label}</span>
       <span className="font-extrabold" style={{ color: valueColor }}>{value}</span>
+    </div>
+  );
+}
+
+// One editable image slot: thumbnail + upload/change + optional reset-to-default.
+function ImageSlot({
+  label,
+  hint,
+  src,
+  accept = "image/*",
+  emptyLabel,
+  onUpload,
+  onReset,
+}: {
+  label: string;
+  hint?: string;
+  src: string;
+  accept?: string;
+  emptyLabel?: string;
+  onUpload: (file: File) => void;
+  onReset?: () => void;
+}) {
+  return (
+    <div className="bg-white rounded-2xl shadow-card" style={{ padding: 14 }}>
+      <div className="flex items-start gap-3">
+        <div
+          style={{
+            width: 72,
+            height: 72,
+            minWidth: 72,
+            borderRadius: 10,
+            background: "#F8EDE9",
+            overflow: "hidden",
+            border: "1px solid #F3C6C6",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {src ? (
+            // eslint-disable-next-line @next/next/no-img-element -- admin thumbnail
+            <img src={assetUrl(src)} alt={label} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-[9px] font-bold text-plum-soft" style={{ textAlign: "center", padding: 4 }}>
+              default
+            </span>
+          )}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p className="m-0 font-extrabold text-[13.5px]">{label}</p>
+          {hint && <p className="m-0 mt-0.5 text-[11.5px] text-plum-soft">{hint}</p>}
+          {!src && emptyLabel && (
+            <p className="m-0 mt-0.5 text-[11px] font-bold text-gold-ink">{emptyLabel}</p>
+          )}
+          <div className="flex gap-2 mt-2 flex-wrap">
+            <label
+              className="cursor-pointer bg-plum text-white font-sans font-extrabold text-[12px] rounded-full"
+              style={{ padding: "8px 14px", minHeight: 36, display: "inline-flex", alignItems: "center" }}
+            >
+              {src ? "Change" : "Upload"}
+              <input
+                type="file"
+                accept={accept}
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) onUpload(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {onReset && (
+              <button
+                onClick={onReset}
+                className="cursor-pointer bg-cream text-plum font-sans font-extrabold text-[12px] rounded-full"
+                style={{ border: "2px solid #F3C6C6", padding: "8px 12px", minHeight: 36 }}
+              >
+                Reset to default
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

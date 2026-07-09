@@ -2,14 +2,17 @@
 //
 // Dev: persists to `.data/store.json` (gitignored) so data survives restarts.
 // Serverless (Vercel): the app bundle is read-only, so it falls back to the
-// ephemeral OS temp dir. That means writes DO NOT persist between requests in
-// production — this is intentional for the stub. Swap in a real database
-// (Supabase / Vercel Postgres) before launch. See ./index.ts.
+// ephemeral OS temp dir — writes DO NOT persist across instances there. Swap in
+// a real database (see ./index.ts) before relying on it in production.
+//
+// IMPORTANT: read() always reads from disk (no sticky in-memory cache) so an
+// admin edit is reflected by the very next frontend request in the same process.
 import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
 import type { Store } from "../types";
 import { seedStore } from "../seed";
+import { hydrate } from "./hydrate";
 import type { StoreRepository } from "./repository";
 
 function dataFile(): string {
@@ -20,40 +23,20 @@ function dataFile(): string {
   return path.join(base, "store.json");
 }
 
-// Merge persisted data over fresh defaults so new seed keys always appear.
-function hydrate(saved: Partial<Store> | null): Store {
-  const defaults = seedStore();
-  if (!saved) return defaults;
-  return {
-    ...defaults,
-    ...saved,
-    settings: { ...defaults.settings, ...(saved.settings || {}) },
-  };
-}
-
 export class JsonFileRepository implements StoreRepository {
-  private cache: Store | null = null;
-
   async read(): Promise<Store> {
-    if (this.cache) return this.cache;
     try {
       const raw = await fs.readFile(dataFile(), "utf8");
-      this.cache = hydrate(JSON.parse(raw));
+      return hydrate(JSON.parse(raw));
     } catch {
-      this.cache = hydrate(null);
+      return hydrate(null);
     }
-    return this.cache;
   }
 
   async write(store: Store): Promise<void> {
-    this.cache = store;
     const file = dataFile();
-    try {
-      await fs.mkdir(path.dirname(file), { recursive: true });
-      await fs.writeFile(file, JSON.stringify(store, null, 2), "utf8");
-    } catch {
-      // Read-only FS in some environments — cache still serves this instance.
-    }
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(file, JSON.stringify(store, null, 2), "utf8");
   }
 
   async reset(): Promise<Store> {

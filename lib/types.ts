@@ -41,6 +41,19 @@ export interface Product {
   buildHours: number;
   desc: string;
   recipe: Record<string, number>;
+  image?: string; // optional product photo shown in the quote builder
+}
+
+// Every fixed image slot on the site, editable from the admin Image Manager.
+// Empty string means "use the built-in default" (logo → text wordmark,
+// favicon → generated monogram, ogImage → generated share card).
+export interface SiteImages {
+  hero: string;
+  aboutJade: string;
+  aboutNicole: string;
+  logo: string;
+  favicon: string;
+  ogImage: string;
 }
 
 export interface Size {
@@ -102,6 +115,7 @@ export interface Store {
   products: Product[];
   sizes: Size[];
   themes: string[];
+  images: SiteImages;
   gallery: GalleryItem[];
   galleryImages: string[];
   reviews: Review[];

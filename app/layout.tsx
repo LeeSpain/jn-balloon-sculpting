@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Nunito } from "next/font/google";
 import "./globals.css";
+import { getRepository } from "@/lib/store";
+import { assetUrl } from "@/lib/assets";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 const title = "J&N Balloon Sculpting — Handcrafted balloon art, delivered";
@@ -22,48 +24,60 @@ const nunito = Nunito({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: {
-    default: title,
-    template: "%s · J&N Balloon Sculpting",
-  },
-  description,
-  applicationName: "J&N Balloon Sculpting",
-  authors: [{ name: "Jade & Nicole" }],
-  creator: "J&N Balloon Sculpting",
-  keywords: [
-    "balloon sculpting",
-    "balloon arch",
-    "balloon garland",
-    "balloon delivery",
-    "party balloons",
-    "wedding balloons",
-    "birthday balloons",
-    "Cambridgeshire",
-    "Huntingdon",
-    "Jade & Nicole",
-  ],
-  alternates: { canonical: "/" },
-  openGraph: {
-    type: "website",
-    locale: "en_GB",
-    url: "/",
-    siteName: "J&N Balloon Sculpting",
-    title,
+// Dynamic so admin-uploaded favicon / social-share image are honoured. When
+// those slots are blank the built-in defaults apply: the file-based icon.svg
+// and the generated opengraph-image route.
+export async function generateMetadata(): Promise<Metadata> {
+  const images = (await getRepository().read()).images;
+  const meta: Metadata = {
+    metadataBase: new URL(siteUrl),
+    title: {
+      default: title,
+      template: "%s · J&N Balloon Sculpting",
+    },
     description,
-  },
-  twitter: {
-    card: "summary_large_image",
-    title,
-    description,
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: { index: true, follow: true, "max-image-preview": "large" },
-  },
-};
+    applicationName: "J&N Balloon Sculpting",
+    authors: [{ name: "Jade & Nicole" }],
+    creator: "J&N Balloon Sculpting",
+    keywords: [
+      "balloon sculpting",
+      "balloon arch",
+      "balloon garland",
+      "balloon delivery",
+      "party balloons",
+      "wedding balloons",
+      "birthday balloons",
+      "Cambridgeshire",
+      "Huntingdon",
+      "Jade & Nicole",
+    ],
+    alternates: { canonical: "/" },
+    openGraph: {
+      type: "website",
+      locale: "en_GB",
+      url: "/",
+      siteName: "J&N Balloon Sculpting",
+      title,
+      description,
+      ...(images.ogImage ? { images: [{ url: assetUrl(images.ogImage) }] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      ...(images.ogImage ? { images: [assetUrl(images.ogImage)] } : {}),
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { index: true, follow: true, "max-image-preview": "large" },
+    },
+  };
+  if (images.favicon) {
+    meta.icons = { icon: assetUrl(images.favicon), apple: assetUrl(images.favicon) };
+  }
+  return meta;
+}
 
 export const viewport: Viewport = {
   themeColor: "#4A2C4D",

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { getRepository } from "@/lib/store";
 import { buildPublicData } from "@/lib/publicData";
 import { assetUrl } from "@/lib/assets";
@@ -15,6 +14,7 @@ export default async function HomePage({
 }) {
   const store = await getRepository().read();
   const data = buildPublicData(store);
+  const img = data.images; // all site images come from the store (admin-managed)
   const socials = [
     { name: "Instagram", url: data.settings.instagram },
     { name: "Facebook", url: data.settings.facebook },
@@ -70,12 +70,19 @@ export default async function HomePage({
       >
         <div className="max-w-site mx-auto flex items-center justify-between gap-x-4" style={{ padding: "14px 20px" }}>
           <a href="#top" className="no-underline flex flex-col leading-none">
-            <span className="font-display text-[26px] font-bold">
-              J<span className="text-gold">&amp;</span>N
-            </span>
-            <span className="text-[9px] font-bold mt-[3px]" style={{ letterSpacing: "3.5px" }}>
-              BALLOON SCULPTING
-            </span>
+            {img.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element -- admin-managed logo (Blob/uploads URL)
+              <img src={assetUrl(img.logo)} alt="J&N Balloon Sculpting" style={{ height: 44, width: "auto", display: "block" }} />
+            ) : (
+              <>
+                <span className="font-display text-[26px] font-bold">
+                  J<span className="text-gold">&amp;</span>N
+                </span>
+                <span className="text-[9px] font-bold mt-[3px]" style={{ letterSpacing: "3.5px" }}>
+                  BALLOON SCULPTING
+                </span>
+              </>
+            )}
           </a>
           <nav className="flex gap-x-4 items-center justify-end font-bold text-sm">
             {/* Secondary links hidden on phones (one-page scroll); Book now always shows */}
@@ -130,13 +137,11 @@ export default async function HomePage({
           className="rounded-3xl overflow-hidden relative"
           style={{ boxShadow: "0 10px 30px rgba(74,44,77,0.12)", aspectRatio: "4/5", maxHeight: "440px" }}
         >
-          <Image
-            src="/images/hero-arch.png"
+          {/* eslint-disable-next-line @next/next/no-img-element -- admin-managed hero image (Blob/uploads URL) */}
+          <img
+            src={assetUrl(img.hero)}
             alt="Pastel blush and gold balloon arch handcrafted by J&N"
-            fill
-            priority
-            sizes="(max-width: 768px) 100vw, 480px"
-            className="object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
           />
         </div>
       </section>
@@ -228,7 +233,8 @@ export default async function HomePage({
       >
         <div className="flex gap-3.5">
           <div className="flex-1 rounded-[18px] overflow-hidden relative" style={{ aspectRatio: "3/4" }}>
-            <Image src="/images/about-jade.png" alt="Jade, co-founder of J&N Balloon Sculpting" fill sizes="(max-width: 768px) 45vw, 240px" className="object-cover" />
+            {/* eslint-disable-next-line @next/next/no-img-element -- admin-managed photo */}
+            <img src={assetUrl(img.aboutJade)} alt="Jade, co-founder of J&N Balloon Sculpting" className="absolute inset-0 w-full h-full object-cover" />
             <span
               className="absolute font-extrabold text-xs rounded-full"
               style={{ bottom: 10, left: "50%", transform: "translateX(-50%)", background: "rgba(251,247,242,0.92)", padding: "5px 12px" }}
@@ -237,7 +243,8 @@ export default async function HomePage({
             </span>
           </div>
           <div className="flex-1 rounded-[18px] overflow-hidden relative" style={{ aspectRatio: "3/4", marginTop: 28 }}>
-            <Image src="/images/about-nicole.png" alt="Nicole, co-founder of J&N Balloon Sculpting" fill sizes="(max-width: 768px) 45vw, 240px" className="object-cover" />
+            {/* eslint-disable-next-line @next/next/no-img-element -- admin-managed photo */}
+            <img src={assetUrl(img.aboutNicole)} alt="Nicole, co-founder of J&N Balloon Sculpting" className="absolute inset-0 w-full h-full object-cover" />
             <span
               className="absolute font-extrabold text-xs rounded-full"
               style={{ bottom: 10, left: "50%", transform: "translateX(-50%)", background: "rgba(251,247,242,0.92)", padding: "5px 12px" }}

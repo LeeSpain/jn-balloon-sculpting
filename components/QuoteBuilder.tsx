@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { PublicData, PublicZone } from "@/lib/publicData";
+import { assetUrl } from "@/lib/assets";
 
 function gbp(n: number | null | undefined): string {
   if (n == null || isNaN(Number(n))) return "—";
@@ -225,6 +226,15 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
             className="text-left cursor-pointer rounded-2xl p-3.5 border-2 flex flex-col gap-1.5 font-sans text-plum"
             style={{ minHeight: 44, ...sel(p.id === productId) }}
           >
+            {p.image && (
+              // eslint-disable-next-line @next/next/no-img-element -- admin-managed product photo
+              <img
+                src={assetUrl(p.image)}
+                alt={p.name}
+                className="w-full rounded-xl object-cover"
+                style={{ aspectRatio: "4/3", marginBottom: 4 }}
+              />
+            )}
             <span className="font-extrabold text-[15px]">
               {p.id === productId && <span aria-hidden>✓ </span>}
               {p.name}

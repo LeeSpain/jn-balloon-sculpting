@@ -1,6 +1,17 @@
 // J&N Balloon Sculpting — default seed data (from the design bundle's engine.js DEFAULTS)
-import type { Store } from "./types";
+import type { Store, SiteImages } from "./types";
 import { offsetDate } from "./pricing";
+
+// Built-in image defaults. "Reset to default" in the admin restores these.
+// Empty string = use the code-level default (text logo, generated favicon/OG).
+export const DEFAULT_IMAGES: SiteImages = {
+  hero: "images/hero-arch.png",
+  aboutJade: "images/about-jade.png",
+  aboutNicole: "images/about-nicole.png",
+  logo: "",
+  favicon: "",
+  ogImage: "",
+};
 
 export function seedStore(): Store {
   return {
@@ -45,6 +56,7 @@ export function seedStore(): Store {
       { id: "grand", name: "Grand", mult: 1.4 },
     ],
     themes: ["Blush & gold", "Pastel rainbow", "Bright party", "Ivory & sage", "Custom colours"],
+    images: { ...DEFAULT_IMAGES },
     gallery: [
       { id: "g1", title: "Pastel birthday arch", src: "images/gallery-pastel-arch.png" },
       { id: "g2", title: "Ivory wedding centrepiece", src: "images/gallery-wedding.png" },

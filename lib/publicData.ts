@@ -1,7 +1,7 @@
 // Client-safe projection of the store for the public website.
 // Prices are computed on the server so material costs, markup and the Stripe
 // secret never reach the browser.
-import type { Store, DepositType } from "./types";
+import type { Store, DepositType, SiteImages } from "./types";
 import { priceProduct, minDate } from "./pricing";
 
 // Real payments are driven by server-side env vars, never by keys in the DB.
@@ -18,6 +18,7 @@ export interface PublicProduct {
   desc: string;
   fill: "air" | "helium";
   helium: boolean;
+  image: string; // "" when no product photo set
   fromPrice: number; // cheapest size
   priceBySize: Record<string, number>;
 }
@@ -35,6 +36,7 @@ export interface PublicData {
   products: PublicProduct[];
   sizes: { id: string; name: string; mult: number }[];
   themes: string[];
+  images: SiteImages;
   zones: PublicZone[];
   gallery: { id: string; title: string; src: string }[];
   reviews: { id: string; text: string; name: string; event: string }[];
@@ -65,6 +67,7 @@ export function buildPublicData(store: Store): PublicData {
       desc: p.desc,
       fill: p.fill,
       helium: p.fill === "helium",
+      image: p.image || "",
       fromPrice: priceProduct(store, p, cheapest).price,
       priceBySize,
     };
@@ -74,6 +77,7 @@ export function buildPublicData(store: Store): PublicData {
     products,
     sizes: store.sizes.map((s) => ({ id: s.id, name: s.name, mult: s.mult })),
     themes: store.themes,
+    images: store.images,
     zones: store.zones.map((z) => ({
       id: z.id,
       name: z.name,
