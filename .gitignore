@@ -35,3 +35,7 @@ next-env.d.ts
 
 # local data-layer stub (dev only)
 /.data
+.env*
+
+# build/deploy logs
+*.log
