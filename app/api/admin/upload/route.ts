@@ -6,7 +6,9 @@ import { saveImage, extFromType } from "@/lib/storage";
 export const dynamic = "force-dynamic";
 
 const MAX_BYTES = 6 * 1024 * 1024; // 6 MB per image (client downscales first)
-const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "image/x-icon", "image/vnd.microsoft.icon"];
+// SVG is deliberately NOT allowed: SVGs can embed scripts, so serving uploaded
+// ones is a stored-XSS risk. PNG/ICO cover the favicon slot fine.
+const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/x-icon", "image/vnd.microsoft.icon"];
 
 // Accepts a single image file (multipart form field "file") and returns its
 // public URL. Auth + origin + rate limited. The client compresses before upload,

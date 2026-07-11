@@ -204,26 +204,28 @@ export default async function HomePage({
         </div>
       </section>
 
-      {/* Reviews */}
-      <section style={{ background: "#F3C6C6" }}>
-        <div className="max-w-site mx-auto" style={{ padding: "56px 20px" }}>
-          <h2 className="font-display m-0 mb-6" style={{ fontSize: "clamp(26px, 3.5vw, 36px)" }}>
-            Kind words
-          </h2>
-          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))" }}>
-            {data.reviews.map((r) => (
-              <blockquote key={r.id} className="m-0 bg-cream rounded-[18px] shadow-card" style={{ padding: 22 }}>
-                <p className="m-0 mb-3.5 text-[15px] italic" style={{ lineHeight: 1.6 }}>
-                  “{r.text}”
-                </p>
-                <footer className="font-extrabold text-[13.5px] text-plum">
-                  {r.name} <span className="text-plum-soft font-semibold">· {r.event}</span>
-                </footer>
-              </blockquote>
-            ))}
+      {/* Reviews — hidden until real reviews are added in Admin → Site content */}
+      {data.reviews.length > 0 && (
+        <section style={{ background: "#F3C6C6" }}>
+          <div className="max-w-site mx-auto" style={{ padding: "56px 20px" }}>
+            <h2 className="font-display m-0 mb-6" style={{ fontSize: "clamp(26px, 3.5vw, 36px)" }}>
+              Kind words
+            </h2>
+            <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))" }}>
+              {data.reviews.map((r) => (
+                <blockquote key={r.id} className="m-0 bg-cream rounded-[18px] shadow-card" style={{ padding: 22 }}>
+                  <p className="m-0 mb-3.5 text-[15px] italic" style={{ lineHeight: 1.6 }}>
+                    “{r.text}”
+                  </p>
+                  <footer className="font-extrabold text-[13.5px] text-plum">
+                    {r.name} <span className="text-plum-soft font-semibold">· {r.event}</span>
+                  </footer>
+                </blockquote>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* About */}
       <section
@@ -308,7 +310,9 @@ export default async function HomePage({
           </div>
         </div>
         <div className="text-center text-xs" style={{ borderTop: "1px solid rgba(251,247,242,0.15)", padding: 14, opacity: 0.7 }}>
-          © 2026 J&amp;N Balloon Sculpting · <Link href="/admin" className="text-gold no-underline">Admin</Link>
+          © 2026 J&amp;N Balloon Sculpting · <Link href="/privacy" className="text-gold no-underline">Privacy</Link> ·{" "}
+          <Link href="/terms" className="text-gold no-underline">Terms</Link> ·{" "}
+          <Link href="/admin" className="text-gold no-underline">Admin</Link>
         </div>
       </footer>
     </>

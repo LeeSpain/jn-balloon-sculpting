@@ -19,6 +19,25 @@ a:hover {
   color: #ff6f61;
 }
 
+/* Legal pages (/privacy, /terms) — restore readable prose defaults that the
+   Tailwind reset strips (bullets, paragraph spacing, underlined links). */
+.legal-body p {
+  margin: 0 0 14px;
+}
+.legal-body ul {
+  margin: 0 0 14px;
+  padding-left: 22px;
+  list-style: disc;
+}
+.legal-body li {
+  margin-bottom: 6px;
+}
+.legal-body a {
+  color: #c9402f;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* Visible keyboard focus for every interactive element. Coral reads clearly on
    both the cream light sections and the plum dark footer/header. */
 a:focus-visible,
