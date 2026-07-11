@@ -65,7 +65,10 @@ export interface Size {
 export interface GalleryItem {
   id: string;
   title: string;
-  src: string;
+  src: string; // cover image (shown on the card)
+  images?: string[]; // extra photos shown in the creation popup
+  desc?: string; // optional blurb shown in the popup
+  productId?: string; // linked product — enables "Order this piece" in the popup
 }
 
 export interface Review {

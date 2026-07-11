@@ -190,6 +190,27 @@ export default function AdminApp({
     const title = file.name.replace(/\.[^.]+$/, "").slice(0, 60) || "New piece";
     await commit((d) => { d.gallery.push({ id: uid("g"), title, src: url }); });
   }
+  // Extra photos shown in the creation popup on the website.
+  async function addGalleryExtraPhoto(index: number, file: File | undefined) {
+    if (!file) return;
+    const url = await uploadImage(file, { maxDim: 1200 });
+    if (url) await commit((d) => { const g = d.gallery[index]; g.images = [...(g.images || []), url]; });
+  }
+  function removeGalleryExtraPhoto(index: number, photoIdx: number) {
+    commit((d) => { (d.gallery[index].images || []).splice(photoIdx, 1); });
+  }
+  // Swap an extra photo with the cover (the card image on the website).
+  function makeGalleryCover(index: number, photoIdx: number) {
+    commit((d) => {
+      const g = d.gallery[index];
+      const imgs = [...(g.images || [])];
+      const pick = imgs[photoIdx];
+      if (!pick) return;
+      imgs[photoIdx] = g.src;
+      g.src = pick;
+      g.images = imgs;
+    });
+  }
 
   // ---- product photo helpers ----
   async function uploadProductImage(index: number, file: File | undefined) {
@@ -640,28 +661,66 @@ export default function AdminApp({
               {store.gallery.map((g, i) => {
                 const uploaded = g.src.startsWith("data:");
                 return (
-                <div key={g.id} className={`${card} flex flex-wrap gap-3 items-center`} style={{ padding: "12px 16px" }}>
-                  <div style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: "#F8EDE9", backgroundImage: `url('${assetUrl(g.src)}')`, backgroundSize: "cover", backgroundPosition: "center" }} />
-                  <input value={g.title} onChange={(e) => commit((d) => { d.gallery[i].title = e.target.value; })} className="rounded-lg font-bold bg-cream text-plum font-sans border-2 border-blush" style={{ flex: 1, minWidth: 160, padding: "9px 12px", fontSize: 14 }} />
-                  <select
-                    value={uploaded ? "__uploaded__" : g.src}
-                    onChange={(e) => { if (e.target.value !== "__uploaded__") commit((d) => { d.gallery[i].src = e.target.value; }); }}
-                    className="rounded-lg bg-cream border-2 border-blush font-sans"
-                    style={{ padding: "9px 10px", fontSize: "12.5px", maxWidth: 210, minHeight: 42 }}
-                  >
-                    {uploaded && <option value="__uploaded__">Uploaded photo</option>}
-                    {(store.galleryImages || []).map((src) => (
-                      <option key={src} value={src}>{src.replace("images/", "").replace(".png", "").replace("gallery-", "")}</option>
-                    ))}
-                  </select>
-                  <label className="cursor-pointer bg-cream text-plum font-sans font-extrabold text-[12.5px] rounded-lg" style={{ border: "2px solid #F3C6C6", padding: "9px 12px", minHeight: 40, display: "inline-flex", alignItems: "center" }}>
-                    Change photo
-                    <input type="file" accept="image/*" onChange={(e) => { changeGalleryPhoto(i, e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} />
-                  </label>
-                  <div className="flex gap-1.5">
-                    <button onClick={() => commit((d) => { if (i > 0) [d.gallery[i - 1], d.gallery[i]] = [d.gallery[i], d.gallery[i - 1]]; })} className="cursor-pointer border-0 bg-cream rounded-lg font-extrabold" style={{ padding: "9px 12px", minHeight: 40 }}>↑</button>
-                    <button onClick={() => commit((d) => { if (i < d.gallery.length - 1) [d.gallery[i + 1], d.gallery[i]] = [d.gallery[i], d.gallery[i + 1]]; })} className="cursor-pointer border-0 bg-cream rounded-lg font-extrabold" style={{ padding: "9px 12px", minHeight: 40 }}>↓</button>
-                    <button onClick={() => commit((d) => { d.gallery.splice(i, 1); })} className="cursor-pointer border-0 rounded-lg font-extrabold" style={{ background: "#FFE3DF", color: "#c14a3e", padding: "9px 12px", minHeight: 40 }}>✕</button>
+                <div key={g.id} className={card} style={{ padding: "12px 16px" }}>
+                  <div className="flex flex-wrap gap-3 items-center">
+                    <div style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: "#F8EDE9", backgroundImage: `url('${assetUrl(g.src)}')`, backgroundSize: "cover", backgroundPosition: "center" }} />
+                    <input value={g.title} onChange={(e) => commit((d) => { d.gallery[i].title = e.target.value; })} className="rounded-lg font-bold bg-cream text-plum font-sans border-2 border-blush" style={{ flex: 1, minWidth: 160, padding: "9px 12px", fontSize: 14 }} />
+                    <select
+                      value={uploaded ? "__uploaded__" : g.src}
+                      onChange={(e) => { if (e.target.value !== "__uploaded__") commit((d) => { d.gallery[i].src = e.target.value; }); }}
+                      className="rounded-lg bg-cream border-2 border-blush font-sans"
+                      style={{ padding: "9px 10px", fontSize: "12.5px", maxWidth: 210, minHeight: 42 }}
+                    >
+                      {uploaded && <option value="__uploaded__">Uploaded photo</option>}
+                      {(store.galleryImages || []).map((src) => (
+                        <option key={src} value={src}>{src.replace("images/", "").replace(".png", "").replace("gallery-", "")}</option>
+                      ))}
+                    </select>
+                    <label className="cursor-pointer bg-cream text-plum font-sans font-extrabold text-[12.5px] rounded-lg" style={{ border: "2px solid #F3C6C6", padding: "9px 12px", minHeight: 40, display: "inline-flex", alignItems: "center" }}>
+                      Change photo
+                      <input type="file" accept="image/*" onChange={(e) => { changeGalleryPhoto(i, e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} />
+                    </label>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => commit((d) => { if (i > 0) [d.gallery[i - 1], d.gallery[i]] = [d.gallery[i], d.gallery[i - 1]]; })} className="cursor-pointer border-0 bg-cream rounded-lg font-extrabold" style={{ padding: "9px 12px", minHeight: 40 }}>↑</button>
+                      <button onClick={() => commit((d) => { if (i < d.gallery.length - 1) [d.gallery[i + 1], d.gallery[i]] = [d.gallery[i], d.gallery[i + 1]]; })} className="cursor-pointer border-0 bg-cream rounded-lg font-extrabold" style={{ padding: "9px 12px", minHeight: 40 }}>↓</button>
+                      <button onClick={() => commit((d) => { d.gallery.splice(i, 1); })} className="cursor-pointer border-0 rounded-lg font-extrabold" style={{ background: "#FFE3DF", color: "#c14a3e", padding: "9px 12px", minHeight: 40 }}>✕</button>
+                    </div>
+                  </div>
+
+                  {/* Popup content: extra photos, description, order link */}
+                  <div className="flex flex-wrap gap-3 items-center" style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #F3C6C6" }}>
+                    <div className="flex gap-2 items-center flex-wrap">
+                      {(g.images || []).map((src, j) => (
+                        <div key={`${src}-${j}`} className="relative" style={{ width: 44, height: 44 }}>
+                          <div style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: "#F8EDE9", backgroundImage: `url('${assetUrl(src)}')`, backgroundSize: "cover", backgroundPosition: "center" }} />
+                          <button onClick={() => makeGalleryCover(i, j)} title="Make this the card photo" aria-label="Make this the card photo" className="cursor-pointer absolute border-0 rounded-full bg-white font-extrabold" style={{ top: -7, left: -7, width: 20, height: 20, fontSize: 10, lineHeight: "20px", padding: 0, boxShadow: "0 1px 4px rgba(74,44,77,0.3)" }}>★</button>
+                          <button onClick={() => removeGalleryExtraPhoto(i, j)} title="Remove this photo" aria-label="Remove this photo" className="cursor-pointer absolute border-0 rounded-full font-extrabold" style={{ top: -7, right: -7, width: 20, height: 20, fontSize: 10, lineHeight: "20px", padding: 0, background: "#FFE3DF", color: "#c14a3e", boxShadow: "0 1px 4px rgba(74,44,77,0.3)" }}>✕</button>
+                        </div>
+                      ))}
+                      <label className="cursor-pointer bg-cream text-plum font-sans font-extrabold text-[11.5px] rounded-lg" style={{ border: "2px dashed #F3C6C6", padding: "8px 10px", minHeight: 40, display: "inline-flex", alignItems: "center" }}>
+                        + Photo
+                        <input type="file" accept="image/*" onChange={(e) => { addGalleryExtraPhoto(i, e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} />
+                      </label>
+                    </div>
+                    <input
+                      value={g.desc || ""}
+                      onChange={(e) => commit((d) => { d.gallery[i].desc = e.target.value; })}
+                      placeholder="Popup description (optional) — e.g. size, colours, occasion"
+                      className="rounded-lg bg-cream border-2 border-blush font-sans"
+                      style={{ flex: "2 1 220px", padding: "9px 12px", fontSize: "12.5px" }}
+                    />
+                    <select
+                      value={g.productId || ""}
+                      onChange={(e) => commit((d) => { d.gallery[i].productId = e.target.value || undefined; })}
+                      title="Customers can order this piece straight from the popup"
+                      className="rounded-lg bg-cream border-2 border-blush font-sans font-bold"
+                      style={{ padding: "9px 10px", fontSize: "12.5px", maxWidth: 220, minHeight: 42 }}
+                    >
+                      <option value="">No order button</option>
+                      {store.products.map((p) => (
+                        <option key={p.id} value={p.id}>Order as: {p.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 );
@@ -674,7 +733,7 @@ export default function AdminApp({
               </label>
               <button onClick={() => commit((d) => { d.gallery.push({ id: uid("g"), title: "New piece", src: (d.galleryImages || [])[0] || "" }); })} className="cursor-pointer bg-white text-plum font-sans font-extrabold text-[13.5px] rounded-full" style={{ border: "2px solid #F3C6C6", padding: "11px 20px", minHeight: 44 }}>+ Add from existing artwork</button>
             </div>
-            <p className="text-[12.5px] text-plum-soft" style={{ margin: "0 0 32px" }}>Upload a photo straight from your phone or computer to add or replace a gallery image — it appears on the website immediately. Photos are resized automatically to keep the site fast.</p>
+            <p className="text-[12.5px] text-plum-soft" style={{ margin: "0 0 32px" }}>Upload a photo straight from your phone or computer to add or replace a gallery image — it appears on the website immediately. Photos are resized automatically to keep the site fast. On the website each creation opens a popup: add extra photos with <strong>+ Photo</strong>, write a short description, and pick <strong>Order as</strong> so customers can order that piece in one tap (★ makes an extra photo the card image).</p>
 
             <h2 className="font-display m-0 mb-3.5" style={{ fontSize: 22 }}>Customer reviews</h2>
             <div className="flex flex-col gap-2.5 mb-3.5">

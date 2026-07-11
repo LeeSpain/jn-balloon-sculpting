@@ -65,12 +65,14 @@ export function seedStore(): Store {
     themes: ["Blush & gold", "Pastel rainbow", "Bright party", "Ivory & sage", "Custom colours"],
     images: { ...DEFAULT_IMAGES },
     gallery: [
-      { id: "g1", title: "Pastel birthday arch", src: "images/gallery-pastel-arch.png" },
-      { id: "g2", title: "Ivory wedding centrepiece", src: "images/gallery-wedding.png" },
-      { id: "g3", title: "Graduation display", src: "images/gallery-graduation.png" },
-      { id: "g4", title: "Coral party garland", src: "images/gallery-garland.png" },
-      { id: "g5", title: "Number 30 display", src: "images/gallery-number30.png" },
-      { id: "g6", title: "Baby shower set", src: "images/gallery-babyshower.png" },
+      // productId links each creation to an orderable piece — the popup's
+      // "Order this piece" button pre-selects it in the quote builder.
+      { id: "g1", title: "Pastel birthday arch", src: "images/gallery-pastel-arch.png", productId: "arch" },
+      { id: "g2", title: "Ivory wedding centrepiece", src: "images/gallery-wedding.png", productId: "wedding" },
+      { id: "g3", title: "Graduation display", src: "images/gallery-graduation.png", productId: "grad" },
+      { id: "g4", title: "Coral party garland", src: "images/gallery-garland.png", productId: "garland" },
+      { id: "g5", title: "Number 30 display", src: "images/gallery-number30.png", productId: "number" },
+      { id: "g6", title: "Baby shower set", src: "images/gallery-babyshower.png", productId: "garland" },
     ],
     galleryImages: [
       "images/gallery-pastel-arch.png",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { PublicData, PublicZone } from "@/lib/publicData";
 import { assetUrl } from "@/lib/assets";
 
@@ -60,6 +60,16 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
   const [warnMsg, setWarnMsg] = useState<string | null>(null);
   const [bookedMsg, setBookedMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // "Order this piece" from a gallery popup pre-selects the linked product.
+  useEffect(() => {
+    function onOrder(e: Event) {
+      const id = (e as CustomEvent<{ productId?: string }>).detail?.productId;
+      if (id && data.products.some((p) => p.id === id)) setProductId(id);
+    }
+    window.addEventListener("jn:order", onOrder);
+    return () => window.removeEventListener("jn:order", onOrder);
+  }, [data.products]);
 
   const s = data.settings;
   const product = data.products.find((p) => p.id === productId) ?? data.products[0];

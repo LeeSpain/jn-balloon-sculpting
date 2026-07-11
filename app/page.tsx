@@ -3,6 +3,7 @@ import { getRepository } from "@/lib/store";
 import { buildPublicData } from "@/lib/publicData";
 import { assetUrl } from "@/lib/assets";
 import QuoteBuilder from "@/components/QuoteBuilder";
+import GalleryShowcase from "@/components/GalleryShowcase";
 import { CopyButton } from "@/components/CopyButton";
 
 export const dynamic = "force-dynamic";
@@ -86,8 +87,8 @@ export default async function HomePage({
           </a>
           <nav className="flex gap-x-4 items-center justify-end font-bold text-sm">
             {/* Secondary links hidden on phones (one-page scroll); Book now always shows */}
-            <a href="#quote" className="no-underline hidden sm:inline-flex items-center min-h-[44px] px-1">Get a quote</a>
             <a href="#gallery" className="no-underline hidden sm:inline-flex items-center min-h-[44px] px-1">Gallery</a>
+            <a href="#quote" className="no-underline hidden sm:inline-flex items-center min-h-[44px] px-1">Get a quote</a>
             <a href="#about" className="no-underline hidden sm:inline-flex items-center min-h-[44px] px-1">About</a>
             <a
               href="#quote"
@@ -146,6 +147,17 @@ export default async function HomePage({
         </div>
       </section>
 
+      {/* Gallery — cards open a popup; "Order this piece" jumps to the quote below */}
+      <section id="gallery" className="max-w-site mx-auto" style={{ padding: "24px 20px 48px", scrollMarginTop: "80px" }}>
+        <h2 className="font-display m-0 mb-1.5" style={{ fontSize: "clamp(26px, 3.5vw, 36px)" }}>
+          Recent creations
+        </h2>
+        <p className="m-0 mb-6 text-[15px] text-plum-soft">
+          Every piece is handmade to order — tap any favourite to take a closer look.
+        </p>
+        <GalleryShowcase data={data} />
+      </section>
+
       {/* Quote builder */}
       <section id="quote" className="max-w-site mx-auto" style={{ padding: "24px 20px 64px", scrollMarginTop: "80px" }}>
         {searchParams?.booked && (
@@ -167,41 +179,6 @@ export default async function HomePage({
           </div>
         )}
         <QuoteBuilder data={data} />
-      </section>
-
-      {/* Gallery */}
-      <section id="gallery" className="max-w-site mx-auto" style={{ padding: "24px 20px 64px", scrollMarginTop: "80px" }}>
-        <h2 className="font-display m-0 mb-1.5" style={{ fontSize: "clamp(26px, 3.5vw, 36px)" }}>
-          Recent creations
-        </h2>
-        <p className="m-0 mb-6 text-[15px] text-plum-soft">
-          Every piece is handmade to order — here are a few favourites.
-        </p>
-        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
-          {data.gallery.map((g) => (
-            <figure key={g.id} className="m-0 rounded-[18px] overflow-hidden bg-white shadow-card">
-              <div style={{ aspectRatio: "1", backgroundColor: "#F8EDE9", overflow: "hidden" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- gallery photos may be uploaded data: URLs, which next/image can't optimise */}
-                <img
-                  src={assetUrl(g.src)}
-                  alt={g.title}
-                  loading="lazy"
-                  className="w-full h-full object-cover block"
-                />
-              </div>
-              <figcaption className="flex items-center justify-between gap-2" style={{ padding: "12px 14px" }}>
-                <span className="font-bold text-sm">{g.title}</span>
-                <CopyButton
-                  hash="#quote"
-                  idleLabel="Share"
-                  copiedLabel="Copied ✓"
-                  className="cursor-pointer inline-flex items-center border-0 bg-cream text-gold-ink font-extrabold text-xs rounded-full font-sans"
-                  style={{ padding: "10px 14px", minHeight: 44 }}
-                />
-              </figcaption>
-            </figure>
-          ))}
-        </div>
       </section>
 
       {/* Reviews — hidden until real reviews are added in Admin → Site content */}

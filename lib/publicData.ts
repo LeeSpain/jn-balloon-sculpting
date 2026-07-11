@@ -46,7 +46,14 @@ export interface PublicData {
   themes: string[];
   images: SiteImages;
   zones: PublicZone[];
-  gallery: { id: string; title: string; src: string }[];
+  gallery: {
+    id: string;
+    title: string;
+    src: string;
+    images: string[]; // cover first, then extras — for the creation popup
+    desc: string;
+    productId: string; // "" when not linked to an orderable piece
+  }[];
   reviews: { id: string; text: string; name: string; event: string }[];
   settings: {
     leadDays: number;
@@ -94,7 +101,16 @@ export function buildPublicData(store: Store): PublicData {
       areas: z.areas,
       districts: z.districts || [],
     })),
-    gallery: store.gallery,
+    gallery: store.gallery.map((g) => ({
+      id: g.id,
+      title: g.title,
+      src: g.src,
+      // Cover first, then extras; dedupe and drop blanks.
+      images: Array.from(new Set([g.src, ...(g.images || [])].filter(Boolean))),
+      desc: g.desc || "",
+      // Only expose the link when it points at a real product.
+      productId: g.productId && store.products.some((p) => p.id === g.productId) ? g.productId : "",
+    })),
     reviews: store.reviews,
     settings: {
       leadDays: store.settings.leadDays,
