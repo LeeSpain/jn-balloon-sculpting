@@ -20,9 +20,15 @@ live deployment** — steps below.
 - (Any Postgres works — Supabase/RDS/etc. Paste its **pooled** connection string as
   `DATABASE_URL` in Project → Settings → Environment Variables.)
 
-## 2. Blob (images) — already enabled by you
-- Confirm `BLOB_READ_WRITE_TOKEN` exists under Project → Settings → Environment Variables
-  (Vercel adds it when the Blob store is created). Images then persist to Blob in prod.
+## 2. Blob (images) — recommended, not required
+- Image uploads work without it: with no `BLOB_READ_WRITE_TOKEN`, uploaded photos
+  are stored inline (as data URLs) inside the store, so they persist wherever the
+  store persists (i.e. the database from step 1).
+- For a photo-heavy site, connect Vercel Blob so images are CDN-served and the
+  store stays small: Project → Storage → Create → Blob. Vercel then injects
+  `BLOB_READ_WRITE_TOKEN` and uploads switch to Blob URLs automatically.
+  (Without it, keep total uploaded imagery modest — the whole store is sent on
+  each admin save, and Vercel caps that request at ~4.5 MB.)
 
 ## 3. Deploy
 - Redeploy so the new env vars take effect. Keep **`BOOKINGS_LIVE` unset** for now —

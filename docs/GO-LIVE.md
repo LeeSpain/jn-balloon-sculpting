@@ -2,8 +2,18 @@
 
 Everything code-side is **done and verified** (build ✓ · type-check ✓ · lint ✓):
 legal pages (`/privacy`, `/terms`), demo data removed from the production seed,
-SVG uploads blocked, sitemap updated. What remains is **account/config work only**
-— things that need your logins (Vercel, Stripe, domain registrar, Resend).
+SVG uploads blocked, sitemap updated, image uploads now work even before Vercel
+Blob is connected. What remains is **account/config work only** — things that
+need your logins (Vercel, Stripe, domain registrar, Resend).
+
+The admin dashboard shows a **"Getting ready to go live"** banner listing exactly
+what still needs connecting — it disappears once everything's set.
+
+> **The one thing that actually blocks launch: connect a database.** Without it,
+> edits you make in the admin (hero image, prices, content, orders) save for the
+> moment but reset whenever the server idles — Vercel gives every save a fresh,
+> empty instance. It's a 2-minute click (step 3). Everything else below is
+> polish or payments.
 
 Do them in this order. Steps 1–7 get you **live taking enquiries**.
 Steps 8–10 switch on **real card payments**.

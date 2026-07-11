@@ -1,7 +1,8 @@
-import { getRepository } from "@/lib/store";
+import { getRepository, hasDatabase } from "@/lib/store";
 import AdminApp from "@/components/admin/AdminApp";
-import { serverStripeEnabled } from "@/lib/publicData";
+import { serverStripeEnabled, bookingsLive } from "@/lib/publicData";
 import { sanitizeStoreForClient } from "@/lib/adminStore";
+import { hasBlobStorage } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,9 @@ export default async function AdminPage() {
     <AdminApp
       initialStore={sanitizeStoreForClient(store)}
       stripeEnvConnected={serverStripeEnabled()}
+      dbConnected={hasDatabase()}
+      blobConnected={hasBlobStorage()}
+      bookingsLive={bookingsLive()}
     />
   );
 }

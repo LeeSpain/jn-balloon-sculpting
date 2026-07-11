@@ -84,9 +84,15 @@ function fmtQty(n: number): string {
 export default function AdminApp({
   initialStore,
   stripeEnvConnected,
+  dbConnected,
+  blobConnected,
+  bookingsLive,
 }: {
   initialStore: Store;
   stripeEnvConnected: boolean;
+  dbConnected: boolean;
+  blobConnected: boolean;
+  bookingsLive: boolean;
 }) {
   const [store, setStore] = useState<Store>(initialStore);
   const [tab, setTab] = useState<Tab>("overview");
@@ -222,14 +228,6 @@ export default function AdminApp({
     commit((d) => { delete d.products[index].image; });
   }
 
-  async function resetData() {
-    const res = await fetch("/api/admin/store", { method: "DELETE" });
-    if (res.ok) {
-      const { store: fresh } = await res.json();
-      setStore(fresh);
-    }
-  }
-
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" });
     router.replace("/admin/login");
@@ -355,9 +353,6 @@ export default function AdminApp({
                 : "All changes saved"}
             </span>
             <a href="/" className="text-[13.5px] font-bold no-underline" style={{ color: "#F3C6C6" }}>View site →</a>
-            <button onClick={resetData} className="cursor-pointer bg-transparent font-sans text-xs font-bold rounded-full" style={{ border: "1px solid rgba(251,247,242,0.35)", color: "#FBF7F2", padding: "8px 14px" }}>
-              Reset demo data
-            </button>
             <button onClick={logout} className="cursor-pointer bg-transparent font-sans text-xs font-bold rounded-full" style={{ border: "1px solid rgba(251,247,242,0.35)", color: "#FBF7F2", padding: "8px 14px" }}>
               Log out
             </button>
@@ -388,6 +383,35 @@ export default function AdminApp({
       </nav>
 
       <main className="max-w-admin mx-auto" style={{ padding: "28px 20px 64px" }}>
+        {/* Go-live setup status — only shows while something still needs doing */}
+        {(!dbConnected || !blobConnected || !bookingsLive) && (
+          <div className="rounded-2xl mb-6" style={{ background: "#FFF8ED", border: "2px solid #E6C88A", padding: "16px 20px" }}>
+            <p className="m-0 mb-2 font-extrabold text-[13px] text-gold-ink" style={{ letterSpacing: "1px" }}>
+              GETTING READY TO GO LIVE
+            </p>
+            <ul className="m-0 text-[13.5px]" style={{ paddingLeft: 18, lineHeight: 1.7 }}>
+              {!dbConnected && (
+                <li>
+                  <strong>Database not connected.</strong> Changes save for now but may not stick permanently until a
+                  database is added in Vercel (Storage → Create Database → Postgres). This is the one must-do before launch.
+                </li>
+              )}
+              {!blobConnected && (
+                <li>
+                  <strong>Image hosting not connected (optional).</strong> Photos still work — they&apos;re saved inside
+                  the site data. Adding Vercel Blob makes them load faster and keeps the data light.
+                </li>
+              )}
+              {dbConnected && !bookingsLive && (
+                <li>
+                  <strong>Card payments are off.</strong> The site takes bookings as enquiries (no charge). Turn on
+                  Stripe + <code>BOOKINGS_LIVE</code> in Vercel when you&apos;re ready to take deposits.
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
+
         {/* OVERVIEW */}
         {tab === "overview" && (
           <>

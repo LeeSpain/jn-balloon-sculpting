@@ -47,11 +47,3 @@ export async function POST(req: Request) {
   await getRepository().write(merged);
   return NextResponse.json({ ok: true });
 }
-
-export async function DELETE() {
-  if (!(await isAuthed())) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const store = await getRepository().reset();
-  return NextResponse.json({ store: sanitizeStoreForClient(store) });
-}
