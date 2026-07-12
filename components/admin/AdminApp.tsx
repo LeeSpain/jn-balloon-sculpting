@@ -737,7 +737,9 @@ export default function AdminApp({
                     key={o.id}
                     onClick={() => setSelectedOrderId(o.id)}
                     className={`${card} jn-click grid gap-3.5 items-center`}
-                    style={{ padding: "18px 20px", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", cursor: "pointer" }}
+                    // 180px basis so a phone drops to a clean single-column stack
+                    // instead of two cramped columns; desktop still packs 5 across.
+                    style={{ padding: "18px 20px", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", cursor: "pointer" }}
                   >
                     <div>
                       <p className="m-0 font-extrabold text-[15px] flex items-center gap-1.5">
@@ -767,13 +769,16 @@ export default function AdminApp({
                       <p className="m-0 font-extrabold text-[15px] text-coral">{orderTotal(o)}</p>
                       <p className="mt-0.5 mb-0 text-[12.5px] font-bold" style={{ color: profit > 0 ? "#3c7a3c" : "#c14a3e" }}>profit {gbp(Math.round(profit))}</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    {/* Status + Cancel. flex-wrap + basis so they never crush each
+                        other in a narrow grid track — Cancel drops below the status
+                        picker on mobile rather than getting squashed against it. */}
+                    <div className="flex items-center gap-2 flex-wrap">
                       <select
                         value={o.status}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => setStatus(o.id, e.target.value as OrderStatus)}
                         className="border-2 border-blush rounded-xl font-bold bg-cream font-sans"
-                        style={{ padding: "10px 12px", fontSize: "13.5px", minHeight: 44, flex: 1 }}
+                        style={{ padding: "10px 12px", fontSize: "13.5px", minHeight: 44, flex: "1 1 130px", minWidth: 120 }}
                       >
                         {STATUSES.map((s) => (
                           <option key={s}>{s}</option>
@@ -783,7 +788,7 @@ export default function AdminApp({
                         onClick={(e) => { e.stopPropagation(); setConfirmAction({ kind: "archive", orderId: o.id }); }}
                         title="Cancel & archive this order"
                         className="cursor-pointer border-0 rounded-xl font-sans font-bold text-[12.5px]"
-                        style={{ background: "#F2E7D8", color: "#8a6a1a", padding: "10px 12px", minHeight: 44, whiteSpace: "nowrap" }}
+                        style={{ background: "#F2E7D8", color: "#8a6a1a", padding: "10px 14px", minHeight: 44, whiteSpace: "nowrap", flex: "0 0 auto" }}
                       >
                         Cancel
                       </button>
