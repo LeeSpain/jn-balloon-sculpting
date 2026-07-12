@@ -101,15 +101,13 @@ export default async function HomePage({
         </div>
       </header>
 
-      {/* Hero */}
+      {/* Hero — 50/50 on desktop (text left, image right), stacks on mobile.
+          Fixed 2-col grid instead of auto-fit so the image can't collapse into a
+          narrow third column with dead space beside it. */}
       <section
         id="top"
-        className="max-w-site mx-auto grid items-center"
-        style={{
-          padding: "64px 20px 48px",
-          gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))",
-          gap: "36px",
-        }}
+        className="max-w-site mx-auto grid grid-cols-1 md:grid-cols-2 items-center gap-9"
+        style={{ padding: "64px 20px 48px" }}
       >
         <div>
           <p className="m-0 mb-3.5 text-xs font-extrabold text-gold-ink" style={{ letterSpacing: "3px" }}>
@@ -135,14 +133,15 @@ export default async function HomePage({
           </div>
         </div>
         <div
-          className="rounded-3xl overflow-hidden relative"
-          style={{ boxShadow: "0 10px 30px rgba(74,44,77,0.12)", aspectRatio: "4/5", maxHeight: "440px" }}
+          className="rounded-3xl overflow-hidden relative w-full aspect-[4/3]"
+          style={{ boxShadow: "0 10px 30px rgba(74,44,77,0.12)", maxHeight: "460px" }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- admin-managed hero image (Blob/uploads URL) */}
           <img
             src={assetUrl(img.hero)}
-            alt="Pastel blush and gold balloon arch handcrafted by J&N"
+            alt="Handcrafted balloon garland in blush, rose and gold by J&N"
             className="absolute inset-0 w-full h-full object-cover"
+            style={{ objectPosition: "45% 50%" }}
           />
         </div>
       </section>
