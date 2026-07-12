@@ -125,7 +125,10 @@ export default function ContactsTab({
           <label className={label} style={{ letterSpacing: "0.5px" }}>WHATSAPP TEMPLATE
             <textarea value={store.settings.whatsappTemplate} onChange={(e) => commit((d) => { d.settings.whatsappTemplate = e.target.value; })} rows={3} className={`${input} font-sans`} />
           </label>
-          <p className="m-0 text-[12px] text-plum-soft">Placeholders: <code>{"{name}"}</code>, <code>{"{occasion}"}</code>, <code>{"{date}"}</code>.</p>
+          <label className={label} style={{ letterSpacing: "0.5px" }}>REVIEW REQUEST TEMPLATE
+            <textarea value={store.settings.reviewTemplate} onChange={(e) => commit((d) => { d.settings.reviewTemplate = e.target.value; })} rows={4} className={`${input} font-sans`} placeholder="Sent when you mark an order Delivered — paste your Google/Facebook review link here." />
+          </label>
+          <p className="m-0 text-[12px] text-plum-soft">Placeholders: <code>{"{name}"}</code>, <code>{"{occasion}"}</code>, <code>{"{date}"}</code>. The review template is offered automatically when you mark an order <strong>Delivered</strong>.</p>
         </div>
       </details>
 

@@ -43,6 +43,8 @@ export function seedStore(): Store {
         "Hi {name},\n\nThank you again for choosing J&N Balloon Sculpting for your {occasion}! We loved making it for you. If you've got another celebration coming up, we'd be delighted to help.\n\nWarm wishes,\nJade & Nicole",
       whatsappTemplate:
         "Hi {name}! It's Jade & Nicole from J&N Balloon Sculpting 🎈 Hope you enjoyed your {occasion}! Let us know if we can help with your next celebration.",
+      reviewTemplate:
+        "Hi {name}, it's Jade & Nicole from J&N Balloon Sculpting 🎈 We loved creating your {occasion} and really hope it made the day extra special! If you have a moment, a quick review would mean the world to us — it genuinely helps other families find us. Thank you so much! 💛",
       maxDeliveriesPerDay: 3,
       workDayStart: "09:00",
       workDayEnd: "17:00",

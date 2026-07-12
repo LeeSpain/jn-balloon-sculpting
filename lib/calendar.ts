@@ -17,6 +17,7 @@ export interface CalEvent {
   blockId?: string;
   phone?: string; // customer mobile (delivery/build events) — for one-tap call/WhatsApp
   notes?: string; // customer note (delivery event)
+  done?: boolean; // the underlying order is Delivered — render as completed/past
 }
 
 export const EVENT_STYLE: Record<EventType, { bg: string; fg: string }> = {
@@ -93,11 +94,12 @@ export function eventsInRange(store: Store, fromISO: string, toISO: string): Cal
 
   for (const o of store.orders || []) {
     if (o.archived) continue; // cancelled — no build/delivery events
+    const done = o.status === "Delivered"; // completed order — show as past/done
     if (inRange(o.date)) {
       events.push({
         id: `del-${o.id}`, type: "delivery", date: o.date,
         title: productName(o.product), subtitle: `${o.customer} · ${o.postcode}`,
-        assignee: delivererOf(o), orderId: o.id, phone: o.phone, notes: o.notes,
+        assignee: delivererOf(o), orderId: o.id, phone: o.phone, notes: o.notes, done,
       });
     }
     const bd = buildDateFor(store, o);
@@ -105,7 +107,7 @@ export function eventsInRange(store: Store, fromISO: string, toISO: string): Cal
       events.push({
         id: `bld-${o.id}`, type: "build", date: bd,
         title: `Build: ${productName(o.product)}`, subtitle: `${o.customer}${isHelium(store, o.product) ? " · helium, same-day" : ""}`,
-        assignee: makerOf(o), orderId: o.id, phone: o.phone, notes: o.notes,
+        assignee: makerOf(o), orderId: o.id, phone: o.phone, notes: o.notes, done,
       });
     }
   }
