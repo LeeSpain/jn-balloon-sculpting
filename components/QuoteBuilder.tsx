@@ -242,13 +242,13 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
   return (
     <div className="bg-white rounded-3xl shadow-panel" style={{ padding: "clamp(22px, 4vw, 40px)" }}>
       <p className="m-0 mb-1.5 text-xs font-extrabold text-gold-ink" style={{ letterSpacing: "3px" }}>
-        INSTANT QUOTE
+        {data.copy.quoteKicker}
       </p>
       <h2 className="font-display m-0 mb-2" style={{ fontSize: "clamp(26px, 3.5vw, 36px)" }}>
-        Build your quote in seconds
+        {data.copy.quoteTitle}
       </h2>
       <p className="m-0 mb-7 text-[15px] text-plum-soft">
-        Pick a piece, choose your colours, tell us where — your price appears instantly.
+        {data.copy.quoteSubtitle}
       </p>
 
       {/* 1. Choose your piece */}

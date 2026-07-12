@@ -3,12 +3,14 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Store, Order, OrderStatus, SiteImages } from "@/lib/types";
-import { priceProduct, consumeStock, gbp, round2, perUnitCost, recipeBreakdown } from "@/lib/pricing";
+import { priceProduct, consumeStock, gbp } from "@/lib/pricing";
 import { assetUrl } from "@/lib/assets";
 import { uid } from "@/lib/ids";
 import { DEFAULT_IMAGES } from "@/lib/seed";
 import { computeFinance } from "@/lib/finance";
 import FinanceTab from "./FinanceTab";
+import PricingTab from "./PricingTab";
+import SiteCopyEditor from "./SiteCopyEditor";
 import OrderDetailModal from "./OrderDetailModal";
 import PaymentsSettings from "./PaymentsSettings";
 import ContactsTab from "./ContactsTab";
@@ -81,11 +83,6 @@ function prettyDate(iso: string): string {
     day: "numeric",
     month: "short",
   });
-}
-
-// Show whole numbers plainly (200), fractions to 2dp (0.5).
-function fmtQty(n: number): string {
-  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0$/, "");
 }
 
 export default function AdminApp({
@@ -707,91 +704,7 @@ export default function AdminApp({
 
         {/* PRICING */}
         {tab === "pricing" && (
-          <>
-            <h1 className="font-display m-0 mb-1" style={{ fontSize: 30 }}>Costs &amp; pricing</h1>
-            <p className="m-0 mb-6 text-plum-soft text-[15px]">Change any cost here and every future quote updates automatically.</p>
-            <div className="flex gap-3.5 flex-wrap mb-7">
-              <label className={`${fieldLabel} ${card}`} style={{ padding: "16px 18px", letterSpacing: "1px" }}>
-                LABOUR RATE (£/HR)
-                <input type="number" step="0.5" value={store.settings.labourRate} onChange={(e) => setSetting("labourRate", parseFloat(e.target.value) || 0)} className={numInput} style={{ padding: "10px 12px", fontSize: 17, width: 110 }} />
-              </label>
-              <label className={`${fieldLabel} ${card}`} style={{ padding: "16px 18px", letterSpacing: "1px" }}>
-                MARKUP (%)
-                <input type="number" step="5" value={store.settings.markupPct} onChange={(e) => setSetting("markupPct", parseFloat(e.target.value) || 0)} className={numInput} style={{ padding: "10px 12px", fontSize: 17, width: 110 }} />
-              </label>
-            </div>
-
-            <h2 className="font-display m-0 mb-3.5" style={{ fontSize: 22 }}>Materials</h2>
-            <div className={card} style={{ padding: "8px 18px", marginBottom: 28 }}>
-              {store.materials.map((m, i) => {
-                const low = m.stock != null && m.stock <= (m.lowAt ?? 0);
-                return (
-                  <div key={m.id} className="flex gap-3 items-center flex-wrap" style={{ padding: "10px 0", borderBottom: "1px solid #FBF7F2" }}>
-                    <span className="font-bold text-[14.5px]" style={{ flex: 1, minWidth: 150 }}>{m.name}</span>
-                    <span className="text-[12.5px] text-plum-soft" style={{ width: 56 }}>per {m.unit}</span>
-                    <span className="flex items-center gap-1 font-extrabold">
-                      £<input type="number" step="0.1" value={m.cost} onChange={(e) => commit((d) => { d.materials[i].cost = parseFloat(e.target.value) || 0; })} className={numInput} style={{ padding: "8px 10px", fontSize: 15, width: 76 }} />
-                    </span>
-                    {m.packSize && m.packSize > 1 ? (
-                      <span className="flex items-center gap-1.5 text-[12px] font-bold text-plum-soft" title={`Each ${m.unitLabel || "unit"} costs £${perUnitCost(m).toFixed(3)}`}>
-                        of
-                        <input type="number" step="1" value={m.packSize} onChange={(e) => commit((d) => { d.materials[i].packSize = parseInt(e.target.value) || 1; })} className="rounded-lg font-bold bg-cream text-plum font-sans border-2 border-blush" style={{ padding: "7px 8px", fontSize: 13, width: 56 }} />
-                        {m.unitLabel || "units"}
-                        <span className="rounded-full" style={{ background: "#F0F7F0", color: "#3c7a3c", padding: "3px 9px", fontWeight: 800, whiteSpace: "nowrap" }}>
-                          = £{perUnitCost(m).toFixed(3)}/{m.unitLabel || "unit"}
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="text-[12px] text-plum-soft" style={{ minWidth: 90 }}>
-                        £{perUnitCost(m).toFixed(2)} / {m.unitLabel || m.unit}
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1.5 text-xs font-bold" style={{ color: low ? "#c14a3e" : "#7a5f7d" }}>
-                      stock
-                      <input type="number" step="0.5" value={m.stock ?? 0} onChange={(e) => commit((d) => { d.materials[i].stock = parseFloat(e.target.value) || 0; })} className="rounded-lg font-bold bg-cream text-plum font-sans" style={{ border: `2px solid ${low ? "#FF6F61" : "#F3C6C6"}`, padding: "8px 10px", fontSize: 14, width: 62 }} />
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            <h2 className="font-display m-0 mb-3.5" style={{ fontSize: 22 }}>Products — cost vs price vs profit</h2>
-            <div className="grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))" }}>
-              {store.products.map((p, i) => {
-                const q = priceProduct(store, p, 1);
-                return (
-                  <div key={p.id} className={card} style={{ padding: 20 }}>
-                    <p className="m-0 mb-0.5 font-extrabold text-base">{p.name}</p>
-                    <p className="m-0 mb-3 text-xs text-plum-soft">{p.fill === "helium" ? "Helium-filled · same-day delivery only" : "Air-filled · lasts 2–3 weeks"}</p>
-                    <label className="flex items-center gap-2 text-[13px] font-bold mb-3">
-                      Build time (hrs)
-                      <input type="number" step="0.25" value={p.buildHours} onChange={(e) => commit((d) => { d.products[i].buildHours = parseFloat(e.target.value) || 0; })} className={numInput} style={{ padding: "7px 10px", fontSize: 14, width: 64 }} />
-                    </label>
-                    <Row label="Materials" value={gbp(q.materials)} />
-                    {/* Per-material breakdown so cost is never just one lump */}
-                    <div className="mb-1" style={{ paddingLeft: 8 }}>
-                      {recipeBreakdown(store, p, 1).map((l) => (
-                        <div
-                          key={l.id}
-                          className="flex justify-between gap-2 text-[11.5px]"
-                          style={{ padding: "1px 0" }}
-                          title={`${fmtQty(l.qty)} ${l.unitLabel} @ £${l.perUnit.toFixed(l.perUnit < 1 ? 3 : 2)} each`}
-                        >
-                          <span className="text-plum-soft" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                            {l.name} <span style={{ opacity: 0.7 }}>×{fmtQty(l.qty)}</span>
-                          </span>
-                          <span className="font-bold" style={{ whiteSpace: "nowrap" }}>{gbp(round2(l.lineCost))}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <Row label="Labour" value={gbp(q.labour)} />
-                    <Row label="Customer price" value={gbp(q.price)} valueColor="#FF6F61" border />
-                    <Row label="Profit" value={gbp(round2(q.price - q.cost))} valueColor="#3c7a3c" />
-                  </div>
-                );
-              })}
-            </div>
-          </>
+          <PricingTab store={store} commit={commit} setSetting={setSetting} />
         )}
 
         {/* ZONES */}
@@ -801,21 +714,33 @@ export default function AdminApp({
             <p className="m-0 mb-6 text-plum-soft text-[15px]">Measured from your base between Huntingdon and Stilton. Postcodes outside all zones route to a custom enquiry.</p>
             <div className="flex flex-col gap-3 mb-5">
               {store.zones.map((z, i) => (
-                <div key={z.id} className={`${card} flex flex-wrap gap-3.5 items-center`} style={{ padding: "18px 20px" }}>
-                  <div style={{ minWidth: 130 }}>
-                    <p className="m-0 font-extrabold text-[15.5px]">{z.name}</p>
-                    <p className="mt-0.5 mb-0 text-[12.5px] text-plum-soft">{z.range}</p>
+                <div key={z.id} className={`${card} flex flex-wrap gap-3 items-start`} style={{ padding: "16px 20px" }}>
+                  <div style={{ minWidth: 150, flex: "1 1 150px" }}>
+                    <input value={z.name} onChange={(e) => commit((d) => { d.zones[i].name = e.target.value; })} placeholder="Zone name" className="rounded-lg bg-cream border-2 border-blush font-sans font-extrabold text-plum w-full" style={{ padding: "8px 10px", fontSize: 14.5 }} />
+                    <input value={z.range} onChange={(e) => commit((d) => { d.zones[i].range = e.target.value; })} placeholder="e.g. 0–10 miles" className="mt-1.5 rounded-lg bg-cream border-2 border-blush font-sans text-plum w-full" style={{ padding: "7px 10px", fontSize: 12.5 }} />
                   </div>
-                  <p className="m-0 text-[13px] text-plum-soft" style={{ flex: 1, minWidth: 200 }}>
-                    {z.areas}
-                    <br />
-                    <span style={{ fontFamily: "monospace", fontSize: "11.5px" }}>{(z.districts || []).join(" · ")}</span>
-                  </p>
-                  <label className="flex items-center gap-1.5 font-extrabold text-[15px]">
-                    £<input type="number" step="1" value={z.fee ?? 0} onChange={(e) => commit((d) => { d.zones[i].fee = parseFloat(e.target.value) || 0; })} className={numInput} style={{ padding: "9px 11px", fontSize: 15, width: 70 }} />
+                  <div style={{ flex: "2 1 240px" }}>
+                    <input value={z.areas} onChange={(e) => commit((d) => { d.zones[i].areas = e.target.value; })} placeholder="Towns covered, e.g. Huntingdon, St Ives" className="rounded-lg bg-cream border-2 border-blush font-sans text-plum w-full" style={{ padding: "8px 10px", fontSize: 13 }} />
+                    <input value={(z.districts || []).join(", ")} onChange={(e) => commit((d) => { d.zones[i].districts = e.target.value.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean); })} placeholder="Postcode districts, e.g. PE29, PE28" className="mt-1.5 rounded-lg bg-cream border-2 border-blush font-sans text-plum w-full" style={{ padding: "7px 10px", fontSize: 11.5, fontFamily: "monospace" }} title="Comma-separated postcode districts that map to this zone" />
+                  </div>
+                  <label className="flex flex-col gap-1 text-[11px] font-extrabold text-gold-ink" style={{ letterSpacing: "0.5px" }}>
+                    FEE £
+                    <input type="number" step="1" value={z.fee ?? 0} onChange={(e) => commit((d) => { d.zones[i].fee = parseFloat(e.target.value) || 0; })} className={numInput} style={{ padding: "9px 11px", fontSize: 15, width: 74 }} />
                   </label>
+                  <button
+                    onClick={() => { if (store.zones.length > 1 && confirm(`Delete “${z.name}”? Postcodes in it will route to a custom enquiry.`)) commit((d) => { d.zones.splice(i, 1); }); }}
+                    disabled={store.zones.length <= 1}
+                    className="cursor-pointer border-0 rounded-lg font-extrabold disabled:opacity-30"
+                    style={{ background: "#FFE3DF", color: "#c14a3e", padding: "8px 12px", minHeight: 40, alignSelf: "center" }}
+                    title="Delete zone"
+                  >✕</button>
                 </div>
               ))}
+              <button
+                onClick={() => commit((d) => { d.zones.push({ id: uid("z"), name: "New zone", range: "", fee: 0, areas: "", districts: [] }); })}
+                className="cursor-pointer bg-plum text-white border-0 font-sans font-extrabold text-[13px] rounded-full self-start"
+                style={{ padding: "10px 18px", minHeight: 42 }}
+              >+ Add zone</button>
             </div>
             <div className="rounded-2xl text-[13.5px] font-semibold text-plum-soft" style={{ background: "#FBF7F2", border: "2px dashed #D4AF7A", padding: "16px 20px" }}>
               Beyond 30 miles → &quot;quote on request&quot; (routed to you as an enquiry). Per-mile pricing (~£1/mile each way) coming in a later phase.
@@ -827,7 +752,9 @@ export default function AdminApp({
         {tab === "content" && (
           <>
             <h1 className="font-display m-0 mb-1" style={{ fontSize: 30 }}>Site content</h1>
-            <p className="m-0 mb-6 text-plum-soft text-[15px]">Images, gallery, reviews and colour themes — changes appear on the website on the next refresh.</p>
+            <p className="m-0 mb-6 text-plum-soft text-[15px]">Words, images, gallery, reviews and colour themes — changes appear on the website on the next refresh.</p>
+
+            <SiteCopyEditor store={store} commit={commit} />
 
             <h2 className="font-display m-0 mb-1.5" style={{ fontSize: 22 }}>Images</h2>
             <p className="m-0 mb-3.5 text-plum-soft text-[13px]">Every image on the site is managed here. Uploads are saved to shared storage and shown on the website on the next refresh. Photos are resized automatically.</p>
@@ -1047,24 +974,6 @@ export default function AdminApp({
   );
 }
 
-function Row({
-  label,
-  value,
-  valueColor,
-  border,
-}: {
-  label: string;
-  value: string;
-  valueColor?: string;
-  border?: boolean;
-}) {
-  return (
-    <div className="flex justify-between text-[13.5px]" style={{ padding: "4px 0", borderTop: border ? "1px solid #FBF7F2" : undefined }}>
-      <span className="text-plum-soft">{label}</span>
-      <span className="font-extrabold" style={{ color: valueColor }}>{value}</span>
-    </div>
-  );
-}
 
 // One editable image slot: thumbnail + upload/change + optional reset-to-default.
 function ImageSlot({
