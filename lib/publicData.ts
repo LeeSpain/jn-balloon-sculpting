@@ -4,6 +4,7 @@
 import type { Store, DepositType, SiteImages } from "./types";
 import { priceProduct, minDate } from "./pricing";
 import { hasDatabase } from "./store";
+import { resolveStripeConfig } from "./stripeConfig";
 
 // Real payments are driven by server-side env vars, never by keys in the DB.
 export function serverStripeEnabled(): boolean {
@@ -117,7 +118,7 @@ export function buildPublicData(store: Store): PublicData {
       refundDays: store.settings.refundDays,
       depositType: store.settings.depositType,
       depositValue: store.settings.depositValue,
-      stripeEnabled: serverStripeEnabled() && bookingsLive(),
+      stripeEnabled: resolveStripeConfig(store).acceptCard,
       instagram: store.settings.instagram,
       facebook: store.settings.facebook,
       tiktok: store.settings.tiktok,

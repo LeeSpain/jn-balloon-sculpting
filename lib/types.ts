@@ -15,7 +15,14 @@ export interface Settings {
   vatRatePct: number; // VAT rate when registered
   deliveryCostPct: number; // portion of delivery fee that is an actual cost
   stripePublishable: string;
-  stripeSecret: string;
+  stripeSecret: string; // encrypted at rest
+  stripeWebhookSecret: string; // encrypted at rest
+  stripeMode: "test" | "live" | ""; // set by a successful "Test connection"
+  stripeConnected: boolean; // last test-connection succeeded
+  acceptCardPayments: boolean; // admin toggle (replaces BOOKINGS_LIVE env)
+  // CRM outreach templates ({name}, {occasion}, {date} placeholders)
+  emailTemplate: string;
+  whatsappTemplate: string;
   instagram: string;
   facebook: string;
   tiktok: string;
@@ -112,6 +119,29 @@ export interface Order {
   awaitingPayment?: boolean; // true until Stripe confirms payment via webhook
 }
 
+export type ContactStatus =
+  | "New enquiry"
+  | "Quoted"
+  | "Booked"
+  | "Delivered"
+  | "Repeat customer";
+
+export interface Contact {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  postcode: string;
+  source: string; // "Website booking" | "Website enquiry" | "Added manually" …
+  status: ContactStatus;
+  notes: string;
+  followUpDate: string; // ISO yyyy-mm-dd or ""
+  marketingConsent: boolean; // opt-in captured at booking (unticked by default)
+  occasion: string; // most recent event type (e.g. "Birthday Arch")
+  occasionDate: string; // most recent event date (ISO) — for anniversaries
+  createdAt: string; // ISO
+}
+
 export interface Store {
   settings: Settings;
   materials: Material[];
@@ -124,6 +154,7 @@ export interface Store {
   reviews: Review[];
   zones: Zone[];
   orders: Order[];
+  contacts: Contact[];
 }
 
 export interface PriceBreakdown {

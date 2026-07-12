@@ -57,6 +57,7 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
   const [date, setDate] = useState("");
   const [custName, setCustName] = useState("");
   const [custContact, setCustContact] = useState("");
+  const [marketingConsent, setMarketingConsent] = useState(false); // unticked by default (GDPR)
   const [warnMsg, setWarnMsg] = useState<string | null>(null);
   const [bookedMsg, setBookedMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -70,6 +71,31 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
     window.addEventListener("jn:order", onOrder);
     return () => window.removeEventListener("jn:order", onOrder);
   }, [data.products]);
+
+  // Handle the return from Stripe Checkout so the customer is never left without
+  // feedback. success_url adds ?booked=<id>; cancel_url (including after a declined
+  // card, once the customer backs out) adds ?cancelled=<id>. The order is already
+  // recorded; payment status is reconciled by the Stripe webhook.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const booked = params.get("booked");
+    const cancelled = params.get("cancelled");
+    if (!booked && !cancelled) return;
+    if (booked) {
+      setBookedMsg(
+        `Payment received — booking ${booked} is confirmed! Thank you. We’ll be in touch to finalise the details.`
+      );
+    } else if (cancelled) {
+      setWarnMsg(
+        `Payment wasn’t completed, so booking ${cancelled} is being held as unpaid — nothing has been charged. ` +
+          `You can try booking and paying again below, or get in touch and we’ll help.`
+      );
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.delete("booked");
+    url.searchParams.delete("cancelled");
+    window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+  }, []);
 
   const s = data.settings;
   const product = data.products.find((p) => p.id === productId) ?? data.products[0];
@@ -187,6 +213,7 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
           date,
           custName,
           custContact,
+          marketingConsent,
         }),
       });
       const json = await res.json();
@@ -369,6 +396,15 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
           />
         </label>
       </div>
+      <label className="flex items-start gap-2.5 mb-1 cursor-pointer" style={{ fontSize: 13, color: "#7a5f7d" }}>
+        <input
+          type="checkbox"
+          checked={marketingConsent}
+          onChange={(e) => setMarketingConsent(e.target.checked)}
+          style={{ width: 18, height: 18, marginTop: 1, accentColor: "#FF6F61" }}
+        />
+        <span>Keep me updated with occasional offers and ideas from J&amp;N Balloon Sculpting. (Optional — we&apos;ll only email you if you tick this.)</span>
+      </label>
 
       {/* Quote result */}
       {q.quoteReady && (

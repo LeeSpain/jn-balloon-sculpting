@@ -10,6 +10,9 @@ import { DEFAULT_IMAGES } from "@/lib/seed";
 import { computeFinance } from "@/lib/finance";
 import FinanceTab from "./FinanceTab";
 import OrderDetailModal from "./OrderDetailModal";
+import PaymentsSettings from "./PaymentsSettings";
+import ContactsTab from "./ContactsTab";
+import { followUpsDue, anniversaries, prettyDate as crmPretty, normContact, ordersForContact } from "@/lib/crm";
 
 // Downscale a chosen image on the client and return a compressed Blob. Vector
 // and animated formats are passed through untouched. Photos become JPEG; logos
@@ -44,7 +47,7 @@ async function compressImage(
   });
 }
 
-type Tab = "overview" | "orders" | "finance" | "pricing" | "zones" | "content" | "settings";
+type Tab = "overview" | "orders" | "contacts" | "finance" | "pricing" | "zones" | "content" | "settings";
 
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
   "Order received": { bg: "#F3C6C6", color: "#4A2C4D" },
@@ -83,13 +86,11 @@ function fmtQty(n: number): string {
 
 export default function AdminApp({
   initialStore,
-  stripeEnvConnected,
   dbConnected,
   blobConnected,
   bookingsLive,
 }: {
   initialStore: Store;
-  stripeEnvConnected: boolean;
   dbConnected: boolean;
   blobConnected: boolean;
   bookingsLive: boolean;
@@ -245,6 +246,7 @@ export default function AdminApp({
   const tabDefs: { id: Tab; label: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "orders", label: "Orders" },
+    { id: "contacts", label: "Contacts" },
     { id: "finance", label: "Finance" },
     { id: "pricing", label: "Costs & pricing" },
     { id: "zones", label: "Delivery zones" },
@@ -311,7 +313,31 @@ export default function AdminApp({
         o.stockTaken = true;
       }
       o.status = next;
+      // Keep the linked CRM contact's pipeline in step: a delivered order moves
+      // the contact to Delivered, or Repeat customer once they have 2+ delivered.
+      if (next === "Delivered") {
+        const c = (d.contacts || []).find((x) => normContact(x.phone) === normContact(o.phone) || normContact(x.email) === normContact(o.phone));
+        if (c) {
+          const delivered = ordersForContact(d, c).filter((x) => x.status === "Delivered").length;
+          c.status = delivered >= 2 ? "Repeat customer" : "Delivered";
+        }
+      }
     });
+  }
+
+  // GDPR erasure — dedicated endpoint (anonymises orders, purges the contact row).
+  async function deleteContact(id: string) {
+    setSaveState("saving");
+    try {
+      const res = await fetch(`/api/admin/contacts/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Delete failed");
+      const j = await res.json();
+      if (j.store) setStore(j.store);
+      setSaveState("saved");
+    } catch (e) {
+      setSaveState("error");
+      setSaveError(e instanceof Error ? e.message : "Delete failed");
+    }
   }
 
   const orderRows = store.orders.slice().sort((a, b) => a.date.localeCompare(b.date));
@@ -405,8 +431,8 @@ export default function AdminApp({
               )}
               {dbConnected && !bookingsLive && (
                 <li>
-                  <strong>Card payments are off.</strong> The site takes bookings as enquiries (no charge). Turn on
-                  Stripe + <code>BOOKINGS_LIVE</code> in Vercel when you&apos;re ready to take deposits.
+                  <strong>Card payments are off.</strong> The site takes bookings as enquiries (no charge). Add your
+                  Stripe keys and turn on card payments in <strong>Settings → Payments</strong> when you&apos;re ready.
                 </li>
               )}
             </ul>
@@ -443,6 +469,40 @@ export default function AdminApp({
                 ))}
               </div>
             )}
+            {(() => {
+              const today = new Date().toISOString().slice(0, 10);
+              const fu = followUpsDue(store, today);
+              const anv = anniversaries(store, today);
+              return (
+                <div className="grid gap-3.5 mb-7" style={{ gridTemplateColumns: fu.length && anv.length ? "repeat(auto-fit, minmax(280px, 1fr))" : "1fr" }}>
+                  {fu.length > 0 && (
+                    <div className="rounded-2xl" style={{ background: "#fff", border: "2px solid #E6C88A", padding: "16px 20px" }}>
+                      <p className="m-0 mb-2 font-extrabold text-[13px] text-gold-ink" style={{ letterSpacing: "1px" }}>FOLLOW-UPS DUE</p>
+                      {fu.map((f) => (
+                        <div key={f.contact.id} className="flex justify-between items-center gap-2 flex-wrap" style={{ padding: "4px 0" }}>
+                          <span className="text-[14px] font-semibold">{f.contact.name} <span className="text-plum-soft font-normal">· {f.contact.status}</span></span>
+                          <span className="flex items-center gap-2">
+                            <span className="text-[12.5px] font-bold" style={{ color: f.overdue ? "#c14a3e" : "#8a6a1a" }}>{f.overdue ? "overdue · " : ""}{crmPretty(f.due)}</span>
+                            <button onClick={() => setTab("contacts")} className="cursor-pointer bg-cream border-0 rounded-full text-[12px] font-bold" style={{ padding: "5px 10px" }}>View</button>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {anv.length > 0 && (
+                    <div className="rounded-2xl" style={{ background: "#fff", border: "2px solid #F3C6C6", padding: "16px 20px" }}>
+                      <p className="m-0 mb-2 font-extrabold text-[13px]" style={{ letterSpacing: "1px", color: "#a35a7a" }}>🎉 ANNIVERSARIES COMING UP</p>
+                      {anv.map((a, i) => (
+                        <div key={i} className="flex justify-between items-center gap-2 flex-wrap" style={{ padding: "4px 0" }}>
+                          <span className="text-[14px] font-semibold">{a.name} <span className="text-plum-soft font-normal">· {a.occasion}</span></span>
+                          <span className="text-[12.5px] text-plum-soft">{a.yearsAgo} yr ago · again {crmPretty(a.nextDate)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             <h2 className="font-display m-0 mb-3.5" style={{ fontSize: 22 }}>Upcoming deliveries</h2>
             <div className="flex flex-col gap-2.5">
               {upcoming.map((o) => {
@@ -518,6 +578,11 @@ export default function AdminApp({
               })}
             </div>
           </>
+        )}
+
+        {/* CONTACTS (CRM) */}
+        {tab === "contacts" && (
+          <ContactsTab store={store} commit={commit} onDelete={deleteContact} />
         )}
 
         {/* FINANCE */}
@@ -833,17 +898,7 @@ export default function AdminApp({
               </div>
             </div>
 
-            <div className={card} style={{ padding: 22, marginBottom: 18 }}>
-              <div className="flex items-center gap-3 mb-1.5">
-                <h2 className="font-display m-0" style={{ fontSize: 20 }}>Payments — Stripe</h2>
-                <span className="text-xs font-extrabold rounded-full" style={{ padding: "5px 12px", background: stripeEnvConnected ? "#E4F0E4" : "#FFE3DF", color: stripeEnvConnected ? "#3c7a3c" : "#c14a3e" }}>
-                  {stripeEnvConnected ? "Connected ✓" : "Not connected"}
-                </span>
-              </div>
-              <p className="m-0 text-[13.5px] text-plum-soft">
-                Live Stripe keys are set securely as server environment variables (<span style={{ fontFamily: "monospace" }}>STRIPE_SECRET_KEY</span> / <span style={{ fontFamily: "monospace" }}>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</span>) in Vercel — never stored in the browser or database. Until set, the site takes bookings as &quot;pay on confirmation&quot; enquiries.
-              </p>
-            </div>
+            <PaymentsSettings />
 
             <div className={card} style={{ padding: 22 }}>
               <h2 className="font-display m-0 mb-1.5" style={{ fontSize: 20 }}>Social links</h2>

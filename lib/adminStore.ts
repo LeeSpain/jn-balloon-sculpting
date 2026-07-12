@@ -9,8 +9,12 @@ export function sanitizeStoreForClient(store: Store): Store {
     ...store,
     settings: {
       ...store.settings,
+      // Never ship secret material to the browser (they're encrypted at rest, but
+      // still must not leave the server). Non-secret status fields (mode,
+      // connected, acceptCardPayments) and the publishable key stay — the
+      // Payments UI reads full status from GET /api/admin/stripe.
       stripeSecret: "",
-      stripePublishable: "",
+      stripeWebhookSecret: "",
     },
   };
 }

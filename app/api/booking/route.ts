@@ -8,11 +8,12 @@ import {
   minDate,
   gbp,
 } from "@/lib/pricing";
-import { serverStripeEnabled, bookingsLive } from "@/lib/publicData";
+import { resolveStripeConfig } from "@/lib/stripeConfig";
 import { notifyNewBooking } from "@/lib/notify";
 import { nextOrderId } from "@/lib/ids";
 import { sameOrigin, clientIp } from "@/lib/security";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { upsertContactFromOrder } from "@/lib/crm";
 import type { Order } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ interface Body {
   date: string;
   custName: string;
   custContact: string;
+  marketingConsent: boolean;
 }
 
 // Trim + hard-cap a free-text field so a hostile client can't store megabytes.
@@ -61,6 +63,7 @@ export async function POST(req: Request) {
     date: clean(raw.date, 10),
     custName: clean(raw.custName, 120),
     custContact: clean(raw.custContact, 160),
+    marketingConsent: raw.marketingConsent === true,
   };
 
   if (!body.custName || !body.custContact) {
@@ -111,12 +114,27 @@ export async function POST(req: Request) {
     depositPaid: 0,
   };
 
+  // CRM: auto-create or update the customer's contact record from this
+  // order/enquiry. Mutates store.contacts, which both write paths below persist.
+  upsertContactFromOrder(store, {
+    name: body.custName,
+    rawContact: body.custContact,
+    postcode: order.postcode,
+    source: isBooking ? "Website booking" : "Website enquiry",
+    status: isBooking ? "Booked" : "New enquiry",
+    consent: body.marketingConsent,
+    occasion: product.name,
+    occasionDate: order.date,
+    nowISO: new Date().toISOString(),
+  });
+
   // Real payment via Stripe Checkout — only when the safety gate is open
   // (durable DB configured AND BOOKINGS_LIVE=true). Otherwise fall through to
   // enquiry mode so no card payment is taken against a non-persistent store.
-  if (isBooking && serverStripeEnabled() && bookingsLive()) {
+  const stripeCfg = resolveStripeConfig(store);
+  if (isBooking && stripeCfg.configured && stripeCfg.acceptCard) {
     try {
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+      const stripe = new Stripe(stripeCfg.secretKey);
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
       // Mark as awaiting payment until the webhook confirms it.
       order.awaitingPayment = true;

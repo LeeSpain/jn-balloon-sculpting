@@ -49,7 +49,7 @@ export function validateStore(raw: unknown): { ok: true; store: Store } | { ok: 
     return { ok: false, error: "Invalid deposit type." };
   }
 
-  const arrays: (keyof Store)[] = ["materials", "products", "sizes", "themes", "gallery", "galleryImages", "reviews", "zones", "orders"];
+  const arrays: (keyof Store)[] = ["materials", "products", "sizes", "themes", "gallery", "galleryImages", "reviews", "zones", "orders", "contacts"];
   for (const key of arrays) {
     const v = s[key];
     if (v != null && !Array.isArray(v)) return { ok: false, error: `${key} must be an array.` };
