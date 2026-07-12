@@ -81,20 +81,20 @@ export default function EnquiriesTab({
                       {e.productName && <span className="text-[11px] font-bold rounded-full" style={{ background: "#F2E7D8", color: "#8a6a3a", padding: "2px 9px" }}>{e.productName}</span>}
                     </p>
                     <p className="mt-1 mb-0 text-[12.5px] text-plum-soft">
-                      <a href={`mailto:${e.email}`} className="font-bold no-underline" style={{ color: "#c9402f" }}>{e.email}</a>
+                      <button type="button" onClick={() => { window.location.href = `mailto:${e.email}`; }} className="cursor-pointer bg-transparent border-0 p-0 font-bold" style={{ color: "#c9402f", font: "inherit" }}>{e.email}</button>
                       {e.phone ? ` · ${e.phone}` : ""}
                       {e.eventDate ? ` · event ${prettyDate(e.eventDate)}` : ""}
                     </p>
                     <p className="mt-0.5 mb-0 text-[11.5px] text-plum-soft">{when(e.createdAt)} · via {e.source}</p>
                   </div>
-                  <a
-                    href={replyMailto(e)}
-                    onClick={() => { if (e.status === "New") onStatus(e.id, "Replied"); }}
-                    className="no-underline cursor-pointer bg-coral-deep text-white font-sans font-extrabold text-[13px] rounded-full"
+                  <button
+                    type="button"
+                    onClick={() => { if (e.status === "New") onStatus(e.id, "Replied"); window.location.href = replyMailto(e); }}
+                    className="cursor-pointer border-0 bg-coral-deep text-white font-sans font-extrabold text-[13px] rounded-full"
                     style={{ padding: "10px 18px", minHeight: 42, display: "inline-flex", alignItems: "center" }}
                   >
                     ✉ Reply
-                  </a>
+                  </button>
                 </div>
 
                 <p className="m-0 mt-3 text-[14px] text-plum" style={{ whiteSpace: "pre-wrap", lineHeight: 1.55, background: "#FBF7F2", borderRadius: 12, padding: "12px 14px" }}>

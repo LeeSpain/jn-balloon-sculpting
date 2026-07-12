@@ -289,8 +289,8 @@ function DayDetail({ store, date, events, onOpen, onAssign }: { store: Store; da
               <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 6 }}>
                 {e.phone && (
                   <>
-                    <a href={`tel:${e.phone}`} className="no-underline rounded-full font-sans font-extrabold text-[11.5px]" style={{ background: "#EDEAEE", color: "#4A2C4D", padding: "5px 11px" }}>📞 {e.phone}</a>
-                    <a href={`https://wa.me/${toIntlDigits(e.phone)}`} target="_blank" rel="noreferrer" className="no-underline rounded-full font-sans font-extrabold text-[11.5px] text-white" style={{ background: "#25D366", padding: "5px 11px" }}>WhatsApp</a>
+                    <button type="button" onClick={() => { window.location.href = `tel:${e.phone}`; }} className="cursor-pointer border-0 rounded-full font-sans font-extrabold text-[11.5px]" style={{ background: "#EDEAEE", color: "#4A2C4D", padding: "5px 11px" }}>📞 {e.phone}</button>
+                    <button type="button" onClick={() => e.phone && window.open(`https://wa.me/${toIntlDigits(e.phone)}`, "_blank", "noopener,noreferrer")} className="cursor-pointer border-0 rounded-full font-sans font-extrabold text-[11.5px] text-white" style={{ background: "#25D366", padding: "5px 11px" }}>WhatsApp</button>
                   </>
                 )}
                 {e.notes && (
@@ -319,8 +319,8 @@ function NotifyModal({ store, order, date, onClose }: { store: Store; order: Sto
         <h3 className="font-display m-0 mb-1" style={{ fontSize: 20 }}>Delivery moved to {pretty}</h3>
         <p className="m-0 mb-3 text-[13.5px] text-plum-soft">Notify {name}? This opens a pre-filled message with the new date.</p>
         <div className="flex gap-2 flex-wrap">
-          <a href={email ? `mailto:${email}?subject=${encodeURIComponent("Your J&N delivery date")}&body=${encodeURIComponent(msg)}` : undefined} onClick={(e) => { if (!email) e.preventDefault(); }} className="no-underline cursor-pointer bg-gold text-plum font-extrabold text-[13px] rounded-full" style={{ padding: "9px 16px", opacity: email ? 1 : 0.4 }}>✉ Email</a>
-          <a href={digits ? `https://wa.me/${digits}?text=${encodeURIComponent(msg)}` : undefined} target="_blank" rel="noreferrer" onClick={(e) => { if (!digits) e.preventDefault(); }} className="no-underline cursor-pointer text-white font-extrabold text-[13px] rounded-full" style={{ padding: "9px 16px", background: "#25D366", opacity: digits ? 1 : 0.4 }}>WhatsApp</a>
+          <button type="button" disabled={!email} onClick={() => { if (email) window.location.href = `mailto:${email}?subject=${encodeURIComponent("Your J&N delivery date")}&body=${encodeURIComponent(msg)}`; }} className="cursor-pointer border-0 bg-gold text-plum font-extrabold text-[13px] rounded-full disabled:opacity-40 disabled:cursor-not-allowed" style={{ padding: "9px 16px" }}>✉ Email</button>
+          <button type="button" disabled={!digits} onClick={() => { if (digits) window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer"); }} className="cursor-pointer border-0 text-white font-extrabold text-[13px] rounded-full disabled:opacity-40 disabled:cursor-not-allowed" style={{ padding: "9px 16px", background: "#25D366" }}>WhatsApp</button>
           <span style={{ flex: 1 }} />
           <button onClick={onClose} className="cursor-pointer bg-cream border-0 font-bold text-[13px] rounded-full" style={{ padding: "9px 16px" }}>Skip</button>
         </div>

@@ -131,12 +131,12 @@ export default function OrderDetailModal({
               {order.phone && (
                 <>
                   <span className="font-bold text-[14px]">{order.phone}</span>
-                  <a href={`tel:${order.phone}`} className="no-underline cursor-pointer rounded-full font-sans font-extrabold text-[12.5px]" style={{ background: "#EDEAEE", color: "#4A2C4D", padding: "7px 14px" }}>📞 Call</a>
-                  <a href={`https://wa.me/${toIntlDigits(order.phone)}`} target="_blank" rel="noreferrer" className="no-underline cursor-pointer rounded-full font-sans font-extrabold text-[12.5px] text-white" style={{ background: "#25D366", padding: "7px 14px" }}>WhatsApp</a>
+                  <button type="button" onClick={() => { window.location.href = `tel:${order.phone}`; }} className="cursor-pointer border-0 rounded-full font-sans font-extrabold text-[12.5px]" style={{ background: "#EDEAEE", color: "#4A2C4D", padding: "7px 14px" }}>📞 Call</button>
+                  <button type="button" onClick={() => window.open(`https://wa.me/${toIntlDigits(order.phone)}`, "_blank", "noopener,noreferrer")} className="cursor-pointer border-0 rounded-full font-sans font-extrabold text-[12.5px] text-white" style={{ background: "#25D366", padding: "7px 14px" }}>WhatsApp</button>
                 </>
               )}
               {order.email && (
-                <a href={`mailto:${order.email}`} className="no-underline font-bold text-[13.5px]" style={{ color: "#c9402f" }}>✉ {order.email}</a>
+                <button type="button" onClick={() => { window.location.href = `mailto:${order.email}`; }} className="cursor-pointer bg-transparent border-0 p-0 font-bold text-[13.5px]" style={{ color: "#c9402f" }}>✉ {order.email}</button>
               )}
             </div>
           </div>
