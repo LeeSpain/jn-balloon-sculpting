@@ -32,7 +32,7 @@ function record(name, ok, detail) {
 function captureCookie(res) {
   const jar = res.headers.getSetCookie ? res.headers.getSetCookie() : [];
   for (const c of jar) {
-    if (c.startsWith("admin")) cookie = c.split(";")[0];
+    if (c.startsWith("jn_admin=")) cookie = c.split(";")[0];
   }
 }
 
