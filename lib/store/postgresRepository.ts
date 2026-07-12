@@ -26,8 +26,9 @@ function connectionString(): string {
 }
 
 // One pool per warm serverless instance (module scope), reused across requests.
+// Exported so other durable features (e.g. rate limiting) share the same pool.
 let pool: Pool | null = null;
-function getPool(): Pool {
+export function getPool(): Pool {
   if (!pool) {
     pool = new Pool({
       connectionString: connectionString(),
