@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { getRepository } from "@/lib/store";
 import { buildPublicData } from "@/lib/publicData";
 import { assetUrl } from "@/lib/assets";
 import QuoteBuilder from "@/components/QuoteBuilder";
 import GalleryShowcase from "@/components/GalleryShowcase";
-import { CopyButton } from "@/components/CopyButton";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 
 export const dynamic = "force-dynamic";
 
@@ -62,45 +62,7 @@ export default async function HomePage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       {/* Header */}
-      <header
-        className="sticky top-0 z-20"
-        style={{
-          background: "rgba(251,247,242,0.92)",
-          backdropFilter: "blur(8px)",
-          borderBottom: "1px solid #F3C6C6",
-        }}
-      >
-        <div className="max-w-site mx-auto flex items-center justify-between gap-x-4" style={{ padding: "14px 20px" }}>
-          <a href="#top" className="no-underline flex flex-col leading-none">
-            {img.logo ? (
-              // eslint-disable-next-line @next/next/no-img-element -- admin-managed logo (Blob/uploads URL)
-              <img src={assetUrl(img.logo)} alt="J&N Balloon Sculpting" style={{ height: 44, width: "auto", display: "block" }} />
-            ) : (
-              <>
-                <span className="font-display text-[26px] font-bold">
-                  J<span className="text-gold">&amp;</span>N
-                </span>
-                <span className="text-[9px] font-bold mt-[3px]" style={{ letterSpacing: "3.5px" }}>
-                  BALLOON SCULPTING
-                </span>
-              </>
-            )}
-          </a>
-          <nav className="flex gap-x-4 items-center justify-end font-bold text-sm">
-            {/* Secondary links hidden on phones (one-page scroll); Book now always shows */}
-            <a href="#gallery" className="no-underline hidden sm:inline-flex items-center min-h-[44px] px-1">Gallery</a>
-            <a href="#quote" className="no-underline hidden sm:inline-flex items-center min-h-[44px] px-1">Get a quote</a>
-            <a href="#about" className="no-underline hidden sm:inline-flex items-center min-h-[44px] px-1">About</a>
-            <a
-              href="#quote"
-              className="no-underline inline-flex items-center bg-coral-deep text-white rounded-full"
-              style={{ padding: "10px 18px", minHeight: 44 }}
-            >
-              Book now
-            </a>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader logo={img.logo} current="home" />
 
       {/* Hero — 50/50 on desktop (text left, image right), stacks on mobile.
           Fixed 2-col grid instead of auto-fit so the image can't collapse into a
@@ -179,6 +141,13 @@ export default async function HomePage({
           </div>
         )}
         <QuoteBuilder data={data} />
+        {/* Not a price question? Steer to the contact form. */}
+        <p className="text-center m-0" style={{ marginTop: 20, fontSize: 14.5 }}>
+          <span className="text-plum-soft">Something bespoke, or a question the quote doesn’t cover? </span>
+          <a href="/contact" className="font-extrabold no-underline" style={{ color: "#c9402f", borderBottom: "2px solid #D4AF7A", paddingBottom: 1 }}>
+            Ask us first →
+          </a>
+        </p>
       </section>
 
       {/* Reviews — hidden until real reviews are added in Admin → Site content */}
@@ -249,49 +218,7 @@ export default async function HomePage({
       </section>
 
       {/* Footer */}
-      <footer style={{ background: "#4A2C4D", color: "#FBF7F2" }}>
-        <div className="max-w-site mx-auto flex flex-wrap justify-between" style={{ padding: "44px 20px 32px", gap: "32px" }}>
-          <div>
-            <p className="font-display text-2xl font-bold m-0">
-              J<span className="text-gold">&amp;</span>N
-            </p>
-            <p className="text-[9px] font-bold" style={{ letterSpacing: "3.5px", margin: "4px 0 14px" }}>
-              BALLOON SCULPTING
-            </p>
-            <p className="text-[13.5px] m-0" style={{ opacity: 0.85, maxWidth: "34ch", lineHeight: 1.6 }}>
-              {copy.footerTagline}
-            </p>
-          </div>
-          <div className="flex flex-col gap-2.5">
-            <p className="font-extrabold text-[13px] m-0" style={{ letterSpacing: "1px" }}>
-              GET IN TOUCH
-            </p>
-            <a href={`mailto:${copy.contactEmail}`} className="text-[14px] no-underline" style={{ color: "#F3C6C6" }}>
-              {copy.contactEmail}
-            </a>
-            <CopyButton
-              hash="#quote"
-              idleLabel="Copy booking link"
-              className="cursor-pointer self-start bg-coral-deep text-white border-0 font-sans font-extrabold text-[13.5px] rounded-full"
-              style={{ padding: "11px 20px", minHeight: 44 }}
-            />
-            {socials.length > 0 && (
-              <div className="flex gap-3 mt-1">
-                {socials.map((sl) => (
-                  <a key={sl.name} href={sl.url} className="text-gold font-extrabold text-[13px] no-underline">
-                    {sl.name}
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="text-center text-xs" style={{ borderTop: "1px solid rgba(251,247,242,0.15)", padding: 14, opacity: 0.7 }}>
-          © 2026 J&amp;N Balloon Sculpting · <Link href="/privacy" className="text-gold no-underline">Privacy</Link> ·{" "}
-          <Link href="/terms" className="text-gold no-underline">Terms</Link> ·{" "}
-          <Link href="/admin" className="text-gold no-underline">Admin</Link>
-        </div>
-      </footer>
+      <SiteFooter copy={copy} socials={socials} />
     </>
   );
 }

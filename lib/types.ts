@@ -99,6 +99,10 @@ export interface SiteCopy {
   aboutBody2: string;
   footerTagline: string;
   contactEmail: string;
+  // Contact page
+  contactTitle: string;
+  contactIntro: string;
+  contactResponseTime: string; // honest response expectation, e.g. "within 24 hours"
 }
 
 export interface GalleryItem {
@@ -198,6 +202,24 @@ export interface Contact {
   assignee?: Assignee; // who owns the follow-up
 }
 
+// A message from the public contact form. Persisted, worked through a New →
+// Replied → Closed pipeline in the admin, and auto-linked to a CRM contact.
+export type EnquiryStatus = "New" | "Replied" | "Closed";
+
+export interface Enquiry {
+  id: string;
+  name: string;
+  email: string;
+  phone: string; // optional
+  eventDate: string; // optional ISO yyyy-mm-dd
+  message: string;
+  productId?: string; // set when the enquiry was raised from a product/gallery piece
+  productName?: string; // captured label for display (product may be renamed later)
+  source: string; // "Contact page" | "Quote builder" | "Gallery: <title>" …
+  status: EnquiryStatus;
+  createdAt: string; // ISO
+}
+
 export interface Store {
   settings: Settings;
   materials: Material[];
@@ -212,6 +234,7 @@ export interface Store {
   orders: Order[];
   contacts: Contact[];
   blocks: CalendarBlock[];
+  enquiries: Enquiry[];
   copy: SiteCopy;
 }
 

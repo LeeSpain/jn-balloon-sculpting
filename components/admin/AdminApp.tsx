@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Store, Order, OrderStatus, SiteImages } from "@/lib/types";
+import type { Store, Order, OrderStatus, SiteImages, EnquiryStatus } from "@/lib/types";
 import { priceProduct, consumeStock, gbp } from "@/lib/pricing";
 import { assetUrl } from "@/lib/assets";
 import { uid } from "@/lib/ids";
@@ -15,6 +15,7 @@ import OrderDetailModal from "./OrderDetailModal";
 import ConfirmActionModal from "./ConfirmActionModal";
 import PaymentsSettings from "./PaymentsSettings";
 import ContactsTab from "./ContactsTab";
+import EnquiriesTab from "./EnquiriesTab";
 import CalendarTab from "./CalendarTab";
 import TriageBanner from "./TriageBanner";
 import { eventsInRange, EVENT_STYLE, unacknowledgedOrders, makerOf, delivererOf, personOnOrder } from "@/lib/calendar";
@@ -54,7 +55,7 @@ async function compressImage(
   });
 }
 
-type Tab = "overview" | "orders" | "contacts" | "calendar" | "finance" | "pricing" | "zones" | "content" | "settings";
+type Tab = "overview" | "orders" | "enquiries" | "contacts" | "calendar" | "finance" | "pricing" | "zones" | "content" | "settings";
 
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
   "Order received": { bg: "#F3C6C6", color: "#4A2C4D" },
@@ -252,6 +253,7 @@ export default function AdminApp({
   const tabDefs: { id: Tab; label: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "orders", label: "Orders" },
+    { id: "enquiries", label: "Enquiries" },
     { id: "contacts", label: "Contacts" },
     { id: "calendar", label: "Calendar" },
     { id: "finance", label: "Finance" },
@@ -412,6 +414,13 @@ export default function AdminApp({
   }
 
   const pendingCount = unacknowledgedOrders(store).length;
+  const newEnquiryCount = (store.enquiries || []).filter((e) => e.status === "New").length;
+  function setEnquiryStatus(id: string, status: EnquiryStatus) {
+    commit((d) => {
+      const e = (d.enquiries || []).find((x) => x.id === id);
+      if (e) e.status = status;
+    });
+  }
   const jobRows = store.orders
     .slice()
     .filter((o) => jobFilter === "all" || personOnOrder(o, jobFilter))
@@ -489,6 +498,15 @@ export default function AdminApp({
                   {pendingCount}
                 </span>
               )}
+              {t.id === "enquiries" && newEnquiryCount > 0 && (
+                <span
+                  aria-label={`${newEnquiryCount} new enquiries`}
+                  className="ml-1.5 text-[11px] font-extrabold rounded-full"
+                  style={{ background: "#FF6F61", color: "#fff", padding: "1px 7px" }}
+                >
+                  {newEnquiryCount}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -537,6 +555,21 @@ export default function AdminApp({
               onAcknowledge={acknowledgeOrder}
               onOpenOrder={setSelectedOrderId}
             />
+            {newEnquiryCount > 0 && (
+              <button
+                onClick={() => setTab("enquiries")}
+                className="w-full text-left cursor-pointer rounded-2xl mb-7"
+                style={{ background: "#FFF3F1", border: "2px solid #FF6F61", padding: "16px 20px" }}
+              >
+                <p className="m-0 font-extrabold text-[13px] text-coral flex items-center gap-2" style={{ letterSpacing: "1px" }}>
+                  ✉ {newEnquiryCount} NEW {newEnquiryCount === 1 ? "ENQUIRY" : "ENQUIRIES"}
+                  <span className="text-[11px] font-bold" style={{ color: "#c14a3e" }}>— tap to reply →</span>
+                </p>
+                <p className="m-0 mt-1 text-[13px] text-plum-soft">
+                  {(store.enquiries || []).filter((e) => e.status === "New").slice(0, 3).map((e) => e.name + (e.productName ? ` (${e.productName})` : "")).join(" · ")}
+                </p>
+              </button>
+            )}
             <div className="grid gap-3.5 mb-7" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
               {stats.map((s) => (
                 <button
@@ -784,6 +817,10 @@ export default function AdminApp({
 
         {tab === "contacts" && (
           <ContactsTab store={store} commit={commit} onDelete={deleteContact} />
+        )}
+
+        {tab === "enquiries" && (
+          <EnquiriesTab store={store} onStatus={setEnquiryStatus} />
         )}
 
         {/* FINANCE */}

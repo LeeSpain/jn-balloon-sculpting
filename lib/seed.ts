@@ -117,6 +117,7 @@ export function seedStore(): Store {
       : [],
     contacts: [],
     blocks: [],
+    enquiries: [],
     copy: {
       heroKicker: "CAMBRIDGESHIRE BASED",
       heroTitle: "Handcrafted balloon art, delivered to your door",
@@ -139,6 +140,10 @@ export function seedStore(): Store {
       footerTagline:
         "Handcrafted balloon art, delivered across Cambridgeshire. Huntingdon · Stilton · and everywhere in between.",
       contactEmail: "hello@jnballoons.co.uk",
+      contactTitle: "Say hello",
+      contactIntro:
+        "Got a question, a date in mind, or something a bit different in mind? Drop us a message — it comes straight to Jade & Nicole and we'll get back to you personally.",
+      contactResponseTime: "within 24 hours",
     },
   };
 }
