@@ -1,0 +1,41 @@
+/* Ported from the prototype's <helmet> styles. Warm cream base, deep plum text,
+   Nunito UI / Playfair headings. */
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: #fbf7f2;
+  color: #4a2c4d;
+  font-family: 'Nunito', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  color: #4a2c4d;
+}
+a:hover {
+  color: #ff6f61;
+}
+input,
+select,
+button,
+textarea {
+  font-family: 'Nunito', sans-serif;
+  color: #4a2c4d;
+}
+
+/* Coral call-to-action hover (prototype used style-hover) */
+.cta-coral:hover {
+  background: #e85d4f !important;
+  color: #fff !important;
+}
+
+/* Hide number-input spinners for a cleaner admin */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
