@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Store, Order } from "@/lib/types";
 import { gbp } from "@/lib/pricing";
 
@@ -9,7 +9,8 @@ function prettyDate(iso: string): string {
 }
 
 // Confirmation step for cancelling/archiving or permanently deleting an order —
-// shows the full order so nobody fat-fingers a real booking away.
+// shows the full order so nobody fat-fingers a real booking away. Permanent
+// delete additionally requires typing the order id (type-to-confirm).
 export default function ConfirmActionModal({
   store,
   action,
@@ -21,6 +22,8 @@ export default function ConfirmActionModal({
   onCancel: () => void;
   onConfirm: (kind: "archive" | "delete", orderId: string) => void;
 }) {
+  const [typed, setTyped] = useState("");
+  useEffect(() => { setTyped(""); }, [action]); // reset when a new action opens
   useEffect(() => {
     if (!action) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
@@ -34,6 +37,8 @@ export default function ConfirmActionModal({
   const product = store.products.find((p) => p.id === order.product);
   const isDelete = action.kind === "delete";
   const accent = isDelete ? "#c14a3e" : "#8a6a1a";
+  // Permanent delete is gated on typing the order id exactly.
+  const confirmed = !isDelete || typed.trim().toUpperCase() === order.id.toUpperCase();
 
   return (
     <div
@@ -57,9 +62,23 @@ export default function ConfirmActionModal({
               {product?.name ?? order.product} · {prettyDate(order.date)}
             </p>
             <p className="m-0 mt-0.5 text-[13px] text-plum-soft">
-              {gbp(order.price + (order.delivery || 0))} · {order.postcode || "no postcode"} · {order.status}
+              {gbp(order.price + (order.delivery || 0))} · {order.postcode || "no postcode"} · {order.archived ? "Cancelled" : order.status}
             </p>
           </div>
+
+          {isDelete && (
+            <label className="flex flex-col gap-1.5 mb-4 text-[12.5px] font-bold text-plum-soft">
+              Type <span className="font-extrabold text-plum" style={{ fontFamily: "monospace" }}>{order.id}</span> to confirm
+              <input
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                placeholder={order.id}
+                autoFocus
+                className="border-2 rounded-xl font-bold bg-cream text-plum font-sans"
+                style={{ padding: "10px 12px", fontSize: 15, borderColor: confirmed ? "#3c7a3c" : "#F3C6C6", fontFamily: "monospace" }}
+              />
+            </label>
+          )}
 
           <div className="flex gap-2.5 justify-end flex-wrap">
             <button
@@ -70,8 +89,9 @@ export default function ConfirmActionModal({
               Keep order
             </button>
             <button
-              onClick={() => onConfirm(action.kind, action.orderId)}
-              className="cursor-pointer border-0 font-sans font-extrabold text-[14px] rounded-full text-white"
+              onClick={() => confirmed && onConfirm(action.kind, action.orderId)}
+              disabled={!confirmed}
+              className="cursor-pointer border-0 font-sans font-extrabold text-[14px] rounded-full text-white disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ padding: "11px 20px", minHeight: 44, background: isDelete ? "#c14a3e" : "#D49A2A" }}
             >
               {isDelete ? "Delete permanently" : "Cancel & archive"}

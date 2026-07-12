@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Store, Order, OrderStatus, SiteImages, EnquiryStatus } from "@/lib/types";
 import { priceProduct, consumeStock, gbp } from "@/lib/pricing";
@@ -103,7 +103,7 @@ export default function AdminApp({
   const [newTheme, setNewTheme] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [jobFilter, setJobFilter] = useState<"all" | "Jade" | "Nicole">("all"); // Orders "my jobs" filter
-  const [showArchived, setShowArchived] = useState(false); // reveal cancelled orders in the list
+  const [orderView, setOrderView] = useState<"active" | "cancelled">("active"); // Active vs Cancelled orders
   // Pending destructive action awaiting confirmation (archive/restore/delete).
   const [confirmAction, setConfirmAction] = useState<{ kind: "archive" | "delete"; orderId: string } | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -263,13 +263,21 @@ export default function AdminApp({
     { id: "settings", label: "Settings" },
   ];
 
+  // Time-of-day greeting is computed only after mount. On production the server
+  // runs in UTC but the browser is in the founder's local timezone, so rendering
+  // it during SSR mismatches on hydration whenever the two fall in different
+  // Morning/Afternoon/Evening buckets (a real React #425).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const greeting = mounted
+    ? ((h) => (h < 12 ? "Morning" : h < 18 ? "Afternoon" : "Evening"))(new Date().getHours()) + ", Jade & Nicole"
+    : "Hello, Jade & Nicole";
+
   // ---- overview derived (finance figures come straight from the P&L engine) ----
-  const { greeting, stats, upcoming, alerts } = useMemo(() => {
+  const { stats, upcoming, alerts } = useMemo(() => {
     const active = store.orders.filter((o) => o.status !== "Delivered" && !o.archived);
     const upcoming = active.slice().sort((a, b) => a.date.localeCompare(b.date));
     const fin = computeFinance(store, "active");
-    const hour = new Date().getHours();
-    const greeting = (hour < 12 ? "Morning" : hour < 18 ? "Afternoon" : "Evening") + ", Jade & Nicole";
     const firstUp = upcoming[0];
     const stats: {
       label: string;
@@ -292,7 +300,7 @@ export default function AdminApp({
     const alerts = store.materials
       .filter((m) => m.stock != null && m.lowAt != null && m.stock <= m.lowAt)
       .map((m) => `${m.name} running low (${m.stock} left) — time to reorder.`);
-    return { greeting, stats, upcoming, alerts };
+    return { stats, upcoming, alerts };
     // productById/sizeById derive from `store`, which is already a dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store]);
@@ -681,7 +689,7 @@ export default function AdminApp({
           <>
             <h1 className="font-display m-0 mb-1" style={{ fontSize: 30 }}>Orders</h1>
             <p className="m-0 mb-4 text-plum-soft text-[15px]">Order received → Materials purchased → In progress → Ready → Delivered</p>
-            <div className="flex gap-2 items-center flex-wrap mb-5">
+            <div className="flex gap-2 items-center flex-wrap mb-3">
               <span className="text-[12px] font-extrabold text-plum-soft" style={{ letterSpacing: "0.5px" }}>MY JOBS:</span>
               {(["all", "Jade", "Nicole"] as const).map((f) => (
                 <button
@@ -701,6 +709,26 @@ export default function AdminApp({
                 </button>
               ))}
             </div>
+            <div className="flex gap-2 items-center flex-wrap mb-5">
+              <span className="text-[12px] font-extrabold text-plum-soft" style={{ letterSpacing: "0.5px" }}>SHOW:</span>
+              {([["active", `Active (${orderRows.length})`], ["cancelled", `Cancelled (${archivedRows.length})`]] as const).map(([v, lbl]) => (
+                <button
+                  key={v}
+                  onClick={() => setOrderView(v)}
+                  aria-pressed={orderView === v}
+                  className="cursor-pointer rounded-full border-2 font-sans font-bold text-[13px]"
+                  style={{
+                    padding: "7px 16px", minHeight: 38,
+                    borderColor: orderView === v ? "#FF6F61" : "#F3C6C6",
+                    background: orderView === v ? "#FFF3F1" : "#fff",
+                    color: "#4A2C4D",
+                  }}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </div>
+            {orderView === "active" && (
             <div className="flex flex-col gap-3">
               {orderRows.map((o) => {
                 const profit = orderProfit(o);
@@ -767,46 +795,40 @@ export default function AdminApp({
                 <p className="m-0 text-plum-soft text-[14px]">No active orders{jobFilter !== "all" ? ` for ${jobFilter}` : ""}.</p>
               )}
             </div>
+            )}
 
             {/* Cancelled / archived orders — kept on record, restorable, deletable */}
-            {archivedRows.length > 0 && (
-              <div className="mt-6">
-                <button
-                  onClick={() => setShowArchived((v) => !v)}
-                  className="cursor-pointer bg-transparent border-0 font-sans font-extrabold text-[13.5px] text-plum-soft"
-                  style={{ padding: "6px 0" }}
-                >
-                  {showArchived ? "▾" : "▸"} Cancelled orders ({archivedRows.length})
-                </button>
-                {showArchived && (
-                  <div className="flex flex-col gap-2.5 mt-2">
-                    {archivedRows.map((o) => (
-                      <div key={o.id} className={`${card} flex flex-wrap gap-3 items-center`} style={{ padding: "14px 18px", opacity: 0.85 }}>
-                        <div style={{ flex: 1, minWidth: 180 }}>
-                          <p className="m-0 font-bold text-[14.5px] flex items-center gap-1.5">
-                            {o.customer}
-                            <span className="text-[10px] font-extrabold rounded-full" style={{ background: "#EDEAEE", color: "#7a5f7d", padding: "1px 8px", letterSpacing: "0.5px" }}>CANCELLED</span>
-                          </p>
-                          <p className="mt-0.5 mb-0 text-[12.5px] text-plum-soft">{o.id} · {productById(o.product)?.name ?? o.product} · {prettyDate(o.date)} · {orderTotal(o)}</p>
-                        </div>
-                        <button
-                          onClick={() => restoreOrder(o.id)}
-                          className="cursor-pointer border-0 rounded-xl font-sans font-bold text-[12.5px]"
-                          style={{ background: "#E4F0E4", color: "#3c7a3c", padding: "9px 14px", minHeight: 40 }}
-                        >
-                          Restore
-                        </button>
-                        <button
-                          onClick={() => setConfirmAction({ kind: "delete", orderId: o.id })}
-                          title="Delete permanently"
-                          className="cursor-pointer border-0 rounded-xl font-sans font-bold text-[12.5px]"
-                          style={{ background: "#FFE3DF", color: "#c14a3e", padding: "9px 14px", minHeight: 40 }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ))}
+            {orderView === "cancelled" && (
+              <div className="flex flex-col gap-2.5">
+                <p className="m-0 mb-1 text-[13px] text-plum-soft">Cancelled orders are kept for your records (refunds, finance history) but are out of the active pipeline, calendar and finance. Restore one, or delete permanently.</p>
+                {archivedRows.map((o) => (
+                  <div key={o.id} className={`${card} flex flex-wrap gap-3 items-center`} style={{ padding: "14px 18px" }}>
+                    <div style={{ flex: 1, minWidth: 180, cursor: "pointer" }} onClick={() => setSelectedOrderId(o.id)}>
+                      <p className="m-0 font-bold text-[14.5px] flex items-center gap-1.5">
+                        {o.customer}
+                        <span className="text-[10px] font-extrabold rounded-full" style={{ background: "#EDEAEE", color: "#7a5f7d", padding: "1px 8px", letterSpacing: "0.5px" }}>CANCELLED</span>
+                      </p>
+                      <p className="mt-0.5 mb-0 text-[12.5px] text-plum-soft">{o.id} · {productById(o.product)?.name ?? o.product} · {prettyDate(o.date)} · {orderTotal(o)}</p>
+                    </div>
+                    <button
+                      onClick={() => restoreOrder(o.id)}
+                      className="cursor-pointer border-0 rounded-xl font-sans font-bold text-[12.5px]"
+                      style={{ background: "#E4F0E4", color: "#3c7a3c", padding: "9px 14px", minHeight: 40 }}
+                    >
+                      Restore
+                    </button>
+                    <button
+                      onClick={() => setConfirmAction({ kind: "delete", orderId: o.id })}
+                      title="Delete permanently"
+                      className="cursor-pointer border-0 rounded-xl font-sans font-bold text-[12.5px]"
+                      style={{ background: "#FFE3DF", color: "#c14a3e", padding: "9px 14px", minHeight: 40 }}
+                    >
+                      Delete permanently
+                    </button>
                   </div>
+                ))}
+                {archivedRows.length === 0 && (
+                  <p className="m-0 text-plum-soft text-[14px]">No cancelled orders.</p>
                 )}
               </div>
             )}

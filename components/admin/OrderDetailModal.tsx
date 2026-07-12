@@ -86,7 +86,11 @@ export default function OrderDetailModal({
       <div
         onClick={(e) => e.stopPropagation()}
         className="bg-cream rounded-3xl shadow-panel w-full"
-        style={{ maxWidth: 560, margin: "auto" }}
+        // Horizontal-centre only. Vertical `margin: auto` on a flex child taller
+        // than the viewport centres it and CLIPS the overflow — you can't scroll
+        // to the bottom (the Cancel/Delete controls). `0 auto` keeps it top-aligned
+        // so the backdrop's overflowY scrolls the whole modal, danger zone included.
+        style={{ maxWidth: 560, margin: "0 auto" }}
       >
         {/* Header */}
         <div
@@ -149,9 +153,9 @@ export default function OrderDetailModal({
           <div className="flex items-center gap-3 flex-wrap mb-5">
             <span
               className="text-xs font-extrabold rounded-full"
-              style={{ padding: "6px 12px", background: ss.bg, color: ss.color }}
+              style={{ padding: "6px 12px", background: order.archived ? "#EDEAEE" : ss.bg, color: order.archived ? "#7a5f7d" : ss.color }}
             >
-              {order.status}
+              {order.archived ? "Cancelled" : order.status}
             </span>
             <label className="flex items-center gap-2 text-[12.5px] font-bold text-plum-soft">
               Update status
@@ -166,6 +170,17 @@ export default function OrderDetailModal({
                 ))}
               </select>
             </label>
+            <span style={{ flex: 1 }} />
+            {/* Prominent, always-visible cancel — no scrolling needed */}
+            {!order.archived && (
+              <button
+                onClick={() => onArchive(order.id)}
+                className="cursor-pointer border-0 rounded-full font-sans font-extrabold text-[13px]"
+                style={{ background: "#F2E7D8", color: "#8a6a1a", padding: "9px 16px", minHeight: 40 }}
+              >
+                Cancel order
+              </button>
+            )}
           </div>
 
           {/* Who does what — making & delivering (changeable any time) */}
