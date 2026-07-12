@@ -1,6 +1,6 @@
 import { getRepository, hasDatabase } from "@/lib/store";
 import AdminApp from "@/components/admin/AdminApp";
-import { serverStripeEnabled, bookingsLive } from "@/lib/publicData";
+import { resolveStripeConfig } from "@/lib/stripeConfig";
 import { sanitizeStoreForClient } from "@/lib/adminStore";
 import { hasBlobStorage } from "@/lib/storage";
 
@@ -13,13 +13,13 @@ export const metadata = {
 
 export default async function AdminPage() {
   const store = await getRepository().read();
+  const cfg = resolveStripeConfig(store);
   return (
     <AdminApp
       initialStore={sanitizeStoreForClient(store)}
-      stripeEnvConnected={serverStripeEnabled()}
       dbConnected={hasDatabase()}
       blobConnected={hasBlobStorage()}
-      bookingsLive={bookingsLive()}
+      bookingsLive={cfg.acceptCard}
     />
   );
 }

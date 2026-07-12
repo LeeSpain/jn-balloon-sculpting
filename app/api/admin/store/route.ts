@@ -33,8 +33,9 @@ export async function POST(req: Request) {
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
-  // Never let a redacted client secret ("") clobber the real stored secret:
-  // preserve the existing Stripe fields the client can't see.
+  // Stripe config is managed only via /api/admin/stripe* — preserve ALL of it here
+  // so the general store save can never clobber keys or flip the payments toggle
+  // (the client's copy has secrets redacted, and the toggle is gated server-side).
   const current = await getRepository().read();
   const merged = {
     ...result.store,
@@ -42,6 +43,10 @@ export async function POST(req: Request) {
       ...result.store.settings,
       stripeSecret: current.settings.stripeSecret,
       stripePublishable: current.settings.stripePublishable,
+      stripeWebhookSecret: current.settings.stripeWebhookSecret,
+      stripeMode: current.settings.stripeMode,
+      stripeConnected: current.settings.stripeConnected,
+      acceptCardPayments: current.settings.acceptCardPayments,
     },
   };
   await getRepository().write(merged);

@@ -10,6 +10,7 @@ import { DEFAULT_IMAGES } from "@/lib/seed";
 import { computeFinance } from "@/lib/finance";
 import FinanceTab from "./FinanceTab";
 import OrderDetailModal from "./OrderDetailModal";
+import PaymentsSettings from "./PaymentsSettings";
 
 // Downscale a chosen image on the client and return a compressed Blob. Vector
 // and animated formats are passed through untouched. Photos become JPEG; logos
@@ -83,13 +84,11 @@ function fmtQty(n: number): string {
 
 export default function AdminApp({
   initialStore,
-  stripeEnvConnected,
   dbConnected,
   blobConnected,
   bookingsLive,
 }: {
   initialStore: Store;
-  stripeEnvConnected: boolean;
   dbConnected: boolean;
   blobConnected: boolean;
   bookingsLive: boolean;
@@ -405,8 +404,8 @@ export default function AdminApp({
               )}
               {dbConnected && !bookingsLive && (
                 <li>
-                  <strong>Card payments are off.</strong> The site takes bookings as enquiries (no charge). Turn on
-                  Stripe + <code>BOOKINGS_LIVE</code> in Vercel when you&apos;re ready to take deposits.
+                  <strong>Card payments are off.</strong> The site takes bookings as enquiries (no charge). Add your
+                  Stripe keys and turn on card payments in <strong>Settings → Payments</strong> when you&apos;re ready.
                 </li>
               )}
             </ul>
@@ -833,17 +832,7 @@ export default function AdminApp({
               </div>
             </div>
 
-            <div className={card} style={{ padding: 22, marginBottom: 18 }}>
-              <div className="flex items-center gap-3 mb-1.5">
-                <h2 className="font-display m-0" style={{ fontSize: 20 }}>Payments — Stripe</h2>
-                <span className="text-xs font-extrabold rounded-full" style={{ padding: "5px 12px", background: stripeEnvConnected ? "#E4F0E4" : "#FFE3DF", color: stripeEnvConnected ? "#3c7a3c" : "#c14a3e" }}>
-                  {stripeEnvConnected ? "Connected ✓" : "Not connected"}
-                </span>
-              </div>
-              <p className="m-0 text-[13.5px] text-plum-soft">
-                Live Stripe keys are set securely as server environment variables (<span style={{ fontFamily: "monospace" }}>STRIPE_SECRET_KEY</span> / <span style={{ fontFamily: "monospace" }}>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</span>) in Vercel — never stored in the browser or database. Until set, the site takes bookings as &quot;pay on confirmation&quot; enquiries.
-              </p>
-            </div>
+            <PaymentsSettings />
 
             <div className={card} style={{ padding: 22 }}>
               <h2 className="font-display m-0 mb-1.5" style={{ fontSize: 20 }}>Social links</h2>

@@ -15,7 +15,11 @@ export interface Settings {
   vatRatePct: number; // VAT rate when registered
   deliveryCostPct: number; // portion of delivery fee that is an actual cost
   stripePublishable: string;
-  stripeSecret: string;
+  stripeSecret: string; // encrypted at rest
+  stripeWebhookSecret: string; // encrypted at rest
+  stripeMode: "test" | "live" | ""; // set by a successful "Test connection"
+  stripeConnected: boolean; // last test-connection succeeded
+  acceptCardPayments: boolean; // admin toggle (replaces BOOKINGS_LIVE env)
   instagram: string;
   facebook: string;
   tiktok: string;

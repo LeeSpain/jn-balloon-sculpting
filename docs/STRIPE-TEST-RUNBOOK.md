@@ -1,126 +1,110 @@
-# Stripe test-mode runbook (Checkout Sessions)
+# Stripe test-mode runbook (admin-first)
 
-Turn on card payments **in Stripe test mode**, verify the whole chain on the **live
-deployment** (including the webhook), then — and only then — swap in live keys.
-The site keeps two independent safety gates, so nothing charges a real card until
-both are deliberately on:
+Configure Stripe **from the admin dashboard** (Settings → Payments), verify the
+whole chain on the **live deployment** in test mode, then swap in live keys.
+Keys live in the database (secret values **encrypted at rest**, never shown again),
+so no redeploy is needed to change them.
 
-- **Stripe configured:** `STRIPE_SECRET_KEY` starts `sk_` **and**
-  `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` starts `pk_`.
-- **Bookings live:** a database is connected **and** `BOOKINGS_LIVE=true`.
+Two safety gates still protect against charging a real card by accident:
+- **Configured & connected:** a valid `sk_`/`pk_` pair is saved and "Test
+  connection" has succeeded.
+- **Accept card payments** is toggled on (only switchable on once connected) **and**
+  a database is connected.
 
-If either is off, the site quietly falls back to "pay on confirmation" enquiry mode.
+Until both hold, the booking form runs in "pay on confirmation" enquiry mode.
 
----
-
-## How payment works here
-
-1. Customer books → `POST /api/booking` recomputes the price server-side and creates
-   the order with `awaitingPayment: true`, `depositPaid: 0`.
-2. The server creates a **Stripe Checkout Session** charging the **deposit**
-   (`depositFor(total)` — see below) and redirects the customer to Stripe.
-3. On success Stripe returns them to `/?booked=<id>` (a confirmation message shows);
-   on cancel/back — including after a declined card — to `/?cancelled=<id>` (a
-   "held as unpaid, nothing charged" message shows).
-4. The **webhook** (`/api/stripe/webhook`) is the only trusted signal of payment: on
-   `checkout.session.completed` it sets `depositPaid = amount_total/100` and clears
-   `awaitingPayment`. The order shows as paid in admin.
-
-**Deposit amount = the admin's setting** (Admin → Settings → Deposit):
-- `full` → the whole total
-- `fixed` → `min(£amount, total)`
-- `percent` → `total × pct/100`
-
-The Checkout line item is `Math.round(deposit × 100)` pence, and the webhook records
-exactly `amount_total` — so what's charged and what's recorded both equal the
-configured deposit. (Verified: `deposit=full→£80/£80`, `fixed £20→£20`, `25%→£20`.)
+> Env vars (`STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`,
+> `STRIPE_WEBHOOK_SECRET`, `BOOKINGS_LIVE=true`) still work as a fallback/override,
+> but the admin path is primary and takes precedence when set.
 
 ---
 
-## Step 1 — Add test keys in Vercel (test mode)
+## How payment works
 
-Stripe Dashboard → toggle **Test mode** (top right) → Developers → API keys. Copy the
-**test** keys. In Vercel → Project → Settings → Environment Variables (Production
-scope), set:
+1. Customer books → the server recomputes the price and creates the order with
+   `awaitingPayment: true`, `depositPaid: 0`.
+2. The server creates a **Stripe Checkout Session** for the **deposit**
+   (`depositFor(total)`: `full`=whole total, `fixed`=£amount, `percent`=%), using
+   the keys resolved from the DB (falling back to env), and redirects to Stripe.
+3. Success → `/?booked=<id>` (confirmation shown); cancel/back, incl. after a
+   declined card → `/?cancelled=<id>` ("held as unpaid — nothing charged").
+4. The **webhook** (`/api/stripe/webhook`) is the only trusted payment signal: on
+   `checkout.session.completed` it records `depositPaid = amount_total/100` and
+   clears `awaitingPayment`. So charged = recorded = the configured deposit.
 
-```
-STRIPE_SECRET_KEY=sk_test_...
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
-```
+---
 
-Do **not** set `BOOKINGS_LIVE` yet.
+## Step 1 — Enter TEST keys in the admin
+
+Stripe Dashboard → **Test mode** on → Developers → API keys. In your site:
+**Admin → Settings → Payments — Stripe**:
+
+1. Paste the **Publishable key** (`pk_test_…`) and **Secret key** (`sk_test_…`).
+2. Click **Save keys**. (The secret is encrypted before storage; afterwards only
+   its last 4 digits are shown.)
+3. Click **Test connection**. On success the badge shows a loud
+   **● TEST MODE — no real money moves**. (`● LIVE MODE` appears for `sk_live_`.)
 
 ## Step 2 — Register the webhook on the LIVE deployment
 
-Stripe Dashboard (Test mode) → Developers → **Webhooks** → **Add endpoint**:
+In the Payments section, copy the **Webhook endpoint** shown
+(`https://<your-site>/api/stripe/webhook`). Then in Stripe (Test mode) →
+Developers → **Webhooks → Add endpoint**:
 
-- Endpoint URL: `https://jn-balloon-sculpting.vercel.app/api/stripe/webhook`
-- Events to send: **`checkout.session.completed`**
-- Create, then copy the endpoint's **Signing secret** (`whsec_...`).
+- URL: paste the copied endpoint.
+- Event: **`checkout.session.completed`**.
+- Create it, copy the endpoint's **Signing secret** (`whsec_…`).
 
-In Vercel set:
+Back in admin → Payments: paste it into **Webhook signing secret** → **Save keys**.
 
-```
-STRIPE_WEBHOOK_SECRET=whsec_...
-```
+> A dashboard endpoint (not `stripe listen`) is what verifies the *deployed* site
+> and lets you inspect **Recent deliveries** (should be 200).
 
-Redeploy so all three env vars are live.
+## Step 3 — Turn on card payments
 
-> Why a dashboard endpoint (not `stripe listen`)? `stripe listen --forward-to`
-> forwards to a URL but issues a throwaway secret and only runs while your terminal
-> is open — fine for local dev, not for verifying the deployed site. The dashboard
-> endpoint is the real, persistent path and lets you inspect **Recent deliveries**.
-
-## Step 3 — Turn bookings live (test mode)
-
-Only after the DB is connected and verified (see `PRODUCTION-DB.md`):
-
-```
-BOOKINGS_LIVE=true
-```
-
-Redeploy. The site now creates real Checkout Sessions — but with **test keys**, so
-only test cards work.
+Only after a database is connected: flip **Accept card payments** on. (The toggle
+is disabled until "Test connection" has passed — it can't be forced on.)
 
 ## Step 4 — Verify end-to-end on the live URL
 
-Use Stripe's [test cards](https://stripe.com/docs/testing). On the live site, make a
-booking that produces a valid price (in-area postcode, date ≥ the lead time).
+Using Stripe [test cards](https://stripe.com/docs/testing), book on the live site
+(in-area postcode, date ≥ lead time):
 
-**A) Successful payment**
-1. At Checkout enter card `4242 4242 4242 4242`, any future expiry, any CVC, any postcode.
-2. You're returned to `/?booked=JN-XXXX` and see the green **"Payment received — booking JN-XXXX is confirmed"** message.
-3. Stripe → Webhooks → your endpoint → **Recent deliveries**: the `checkout.session.completed` delivery is **200**.
-4. Admin → Orders: order `JN-XXXX` shows **paid**, and the amount equals your configured deposit (e.g. full total, or the fixed/percent deposit).
+**A) Success** — card `4242 4242 4242 4242`:
+- Return to `/?booked=JN-XXXX` with the green confirmation.
+- Stripe → Webhooks → your endpoint → Recent deliveries: `checkout.session.completed` = **200**.
+- Admin → Orders: `JN-XXXX` is **paid**, amount = your configured deposit.
 
-**B) Declined card**
-1. Book again; at Checkout enter `4000 0000 0000 0002` (generic decline).
-2. Stripe shows the decline inline. Either try another card, or press **← Back** to leave.
-3. On leaving you land on `/?cancelled=JN-YYYY` and see the amber **"Payment wasn't completed … held as unpaid — nothing has been charged"** message.
-4. Admin → Orders: `JN-YYYY` is still **unpaid** (`awaitingPayment`, deposit £0). No webhook `completed` event fired for it (Recent deliveries shows none), so nothing was recorded — the sensible unpaid state.
+**B) Declined** — card `4000 0000 0000 0002`:
+- Stripe shows the decline; press Back to leave.
+- Return to `/?cancelled=JN-YYYY` with the amber "held as unpaid — nothing charged".
+- Admin → Orders: `JN-YYYY` still **unpaid** (`awaitingPayment`, £0).
 
-**C) Deposit-setting check**
-- Set Admin → Settings → Deposit to `fixed £20` (or `25%`), redeploy/save, book again with `4242…`.
-- Confirm Checkout's "Due today" and the recorded `depositPaid` both equal £20 (or 25% of the total), not the full price.
+**C) Deposit setting** — set Admin → Settings → Deposit to `fixed £20` (or `25%`),
+book with `4242…`, confirm the charge and recorded `depositPaid` = £20 (or 25%).
 
 ## Step 5 — Go live (real cards)
 
-Once A–C pass on the live URL with test keys:
+Once A–C pass in test mode:
+1. Stripe → Test mode off → copy the **live** `sk_live_`/`pk_live_`; add a live-mode
+   webhook endpoint (same URL) and copy its live `whsec_`.
+2. Admin → Settings → Payments: paste the live keys + live webhook secret → Save →
+   **Test connection** (badge flips to **● LIVE MODE**) → toggle Accept card payments on.
+3. Make one real low-value booking, then refund it from Stripe.
 
-1. Stripe → **Test mode off**. Developers → API keys → copy the **live** `sk_live_`/`pk_live_`.
-2. Developers → Webhooks → add the **same endpoint** in live mode; copy its live `whsec_`.
-3. In Vercel replace `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`,
-   `STRIPE_WEBHOOK_SECRET` with the **live** values. Redeploy.
-4. Do one real low-value booking with a real card to smoke-test, then refund it from
-   the Stripe dashboard.
+## Security notes
+
+- Secret key + webhook secret are **AES-256-GCM encrypted at rest** in Postgres
+  (key from `ENCRYPTION_KEY`, else derived from `SESSION_SECRET`). They are never
+  returned to the browser or included in sanitised store reads — only last-4.
+- Changing the secret key resets "connected" and turns Accept card payments **off**
+  until you re-test — you can't accidentally run on a stale/wrong key.
 
 ## Troubleshooting
 
-- **Order stuck `awaitingPayment` after paying** → the webhook didn't reach the site
-  or the signature failed. Check Stripe → Webhooks → Recent deliveries (non-200?),
-  confirm `STRIPE_WEBHOOK_SECRET` matches the endpoint's secret, and that the endpoint
-  URL is exactly `/api/stripe/webhook`.
-- **Customer redirected to enquiry mode instead of Stripe** → a gate is off: verify
-  both keys are set (`sk_`/`pk_`), a DB is connected, and `BOOKINGS_LIVE=true`.
-- **Wrong amount charged** → check Admin → Settings → Deposit; the charge is the
-  deposit, not always the full price.
+- **Order stuck `awaitingPayment` after paying** → webhook didn't verify. Check
+  Stripe → Webhooks → Recent deliveries (non-200?) and that the **Webhook signing
+  secret** saved in admin matches the endpoint's secret.
+- **Redirected to enquiry mode instead of Stripe** → a gate is off: keys saved &
+  tested (green badge), a database connected, and Accept card payments on.
+- **Wrong amount** → check Admin → Settings → Deposit; the charge is the deposit.
