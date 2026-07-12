@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import type { Store, Order, OrderStatus } from "@/lib/types";
+import type { Store, Order, OrderStatus, Assignee } from "@/lib/types";
 import { computeFinanceForOrders } from "@/lib/finance";
 import { gbp } from "@/lib/pricing";
+import { ASSIGNEES, makerOf, delivererOf } from "@/lib/calendar";
 import PLStatement from "./PLStatement";
 
 const STATUSES: OrderStatus[] = [
@@ -36,11 +37,15 @@ export default function OrderDetailModal({
   order,
   onClose,
   onStatusChange,
+  onSetMaker,
+  onSetDeliverer,
 }: {
   store: Store;
   order: Order | null;
   onClose: () => void;
   onStatusChange: (id: string, status: OrderStatus) => void;
+  onSetMaker: (id: string, who: Assignee) => void;
+  onSetDeliverer: (id: string, who: Assignee) => void;
 }) {
   useEffect(() => {
     if (!order) return;
@@ -129,6 +134,46 @@ export default function OrderDetailModal({
                 ))}
               </select>
             </label>
+          </div>
+
+          {/* Who does what — making & delivering (changeable any time) */}
+          <div className="bg-white rounded-2xl shadow-card mb-5" style={{ padding: "14px 18px" }}>
+            <p className="m-0 mb-2.5 text-[11px] font-extrabold text-gold flex items-center gap-2" style={{ letterSpacing: "1px" }}>
+              WHO DOES WHAT
+              {order.acknowledged === false && (
+                <span className="text-[10px] rounded-full" style={{ background: "#FF6F61", color: "#fff", padding: "1px 7px" }}>NOT YET ACKNOWLEDGED</span>
+              )}
+            </p>
+            <div className="flex gap-4 flex-wrap">
+              <label className="flex flex-col gap-1 text-[12px] font-bold text-plum-soft">
+                🔨 Making
+                <select
+                  value={makerOf(order) || ""}
+                  onChange={(e) => onSetMaker(order.id, e.target.value as Assignee)}
+                  className="border-2 border-blush rounded-xl font-bold bg-cream text-plum font-sans"
+                  style={{ padding: "8px 10px", fontSize: 13, minHeight: 40, minWidth: 130 }}
+                >
+                  <option value="" disabled>Unassigned</option>
+                  {ASSIGNEES.map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-[12px] font-bold text-plum-soft">
+                🚗 Delivering
+                <select
+                  value={delivererOf(order) || ""}
+                  onChange={(e) => onSetDeliverer(order.id, e.target.value as Assignee)}
+                  className="border-2 border-blush rounded-xl font-bold bg-cream text-plum font-sans"
+                  style={{ padding: "8px 10px", fontSize: 13, minHeight: 40, minWidth: 130 }}
+                >
+                  <option value="" disabled>Unassigned</option>
+                  {ASSIGNEES.map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
           </div>
 
           {/* This order's P&L */}

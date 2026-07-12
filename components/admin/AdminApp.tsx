@@ -13,7 +13,9 @@ import OrderDetailModal from "./OrderDetailModal";
 import PaymentsSettings from "./PaymentsSettings";
 import ContactsTab from "./ContactsTab";
 import CalendarTab from "./CalendarTab";
-import { eventsInRange, EVENT_STYLE } from "@/lib/calendar";
+import TriageBanner from "./TriageBanner";
+import { eventsInRange, EVENT_STYLE, unacknowledgedOrders, makerOf, delivererOf, personOnOrder } from "@/lib/calendar";
+import type { Assignee } from "@/lib/types";
 import { followUpsDue, anniversaries, prettyDate as crmPretty, normContact, ordersForContact } from "@/lib/crm";
 
 // Downscale a chosen image on the client and return a compressed Blob. Vector
@@ -101,6 +103,7 @@ export default function AdminApp({
   const [tab, setTab] = useState<Tab>("overview");
   const [newTheme, setNewTheme] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [jobFilter, setJobFilter] = useState<"all" | "Jade" | "Nicole">("all"); // Orders "my jobs" filter
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string>("");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -328,6 +331,38 @@ export default function AdminApp({
     });
   }
 
+  // ---- triage: making / delivering / acknowledge ----
+  function setMaker(orderId: string, who: Assignee) {
+    commit((d) => {
+      const o = d.orders.find((x) => x.id === orderId);
+      if (o) o.maker = who;
+    });
+  }
+  function setDeliverer(orderId: string, who: Assignee) {
+    commit((d) => {
+      const o = d.orders.find((x) => x.id === orderId);
+      if (o) o.deliverer = who;
+    });
+  }
+  // Acknowledge: mark the order seen and move it out of "Order received" into the
+  // pipeline. Advancing to "Materials purchased" runs the SAME stock-consumption
+  // invariant as setStatus so status and stock never disagree.
+  function acknowledgeOrder(orderId: string) {
+    commit((d) => {
+      const o = d.orders.find((x) => x.id === orderId);
+      if (!o) return;
+      o.acknowledged = true;
+      if (o.status === "Order received") {
+        const next: OrderStatus = "Materials purchased";
+        if (!o.stockTaken) {
+          consumeStock(d, o.product, o.size);
+          o.stockTaken = true;
+        }
+        o.status = next;
+      }
+    });
+  }
+
   // GDPR erasure — dedicated endpoint (anonymises orders, purges the contact row).
   async function deleteContact(id: string) {
     setSaveState("saving");
@@ -343,7 +378,11 @@ export default function AdminApp({
     }
   }
 
-  const orderRows = store.orders.slice().sort((a, b) => a.date.localeCompare(b.date));
+  const pendingCount = unacknowledgedOrders(store).length;
+  const orderRows = store.orders
+    .slice()
+    .filter((o) => jobFilter === "all" || personOnOrder(o, jobFilter))
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   return (
     <div>
@@ -406,6 +445,15 @@ export default function AdminApp({
               }}
             >
               {t.label}
+              {(t.id === "orders" || t.id === "overview") && pendingCount > 0 && (
+                <span
+                  aria-label={`${pendingCount} orders awaiting triage`}
+                  className="ml-1.5 text-[11px] font-extrabold rounded-full"
+                  style={{ background: "#FF6F61", color: "#fff", padding: "1px 7px" }}
+                >
+                  {pendingCount}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -447,6 +495,13 @@ export default function AdminApp({
           <>
             <h1 className="font-display m-0 mb-1" style={{ fontSize: 30 }}>{greeting}</h1>
             <p className="m-0 mb-6 text-plum-soft text-[15px]">Here&apos;s how the business looks today.</p>
+            <TriageBanner
+              store={store}
+              onSetMaker={setMaker}
+              onSetDeliverer={setDeliverer}
+              onAcknowledge={acknowledgeOrder}
+              onOpenOrder={setSelectedOrderId}
+            />
             <div className="grid gap-3.5 mb-7" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
               {stats.map((s) => (
                 <button
@@ -557,7 +612,27 @@ export default function AdminApp({
         {tab === "orders" && (
           <>
             <h1 className="font-display m-0 mb-1" style={{ fontSize: 30 }}>Orders</h1>
-            <p className="m-0 mb-6 text-plum-soft text-[15px]">Order received → Materials purchased → In progress → Ready → Delivered</p>
+            <p className="m-0 mb-4 text-plum-soft text-[15px]">Order received → Materials purchased → In progress → Ready → Delivered</p>
+            <div className="flex gap-2 items-center flex-wrap mb-5">
+              <span className="text-[12px] font-extrabold text-plum-soft" style={{ letterSpacing: "0.5px" }}>MY JOBS:</span>
+              {(["all", "Jade", "Nicole"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setJobFilter(f)}
+                  aria-pressed={jobFilter === f}
+                  className="cursor-pointer rounded-full border-2 font-sans font-bold text-[13px]"
+                  style={{
+                    padding: "7px 16px",
+                    minHeight: 38,
+                    borderColor: jobFilter === f ? "#FF6F61" : "#F3C6C6",
+                    background: jobFilter === f ? "#FFF3F1" : "#fff",
+                    color: "#4A2C4D",
+                  }}
+                >
+                  {f === "all" ? "Everyone" : f}
+                </button>
+              ))}
+            </div>
             <div className="flex flex-col gap-3">
               {orderRows.map((o) => {
                 const profit = orderProfit(o);
@@ -569,7 +644,12 @@ export default function AdminApp({
                     style={{ padding: "18px 20px", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", cursor: "pointer" }}
                   >
                     <div>
-                      <p className="m-0 font-extrabold text-[15px]">{o.customer}</p>
+                      <p className="m-0 font-extrabold text-[15px] flex items-center gap-1.5">
+                        {o.customer}
+                        {o.acknowledged === false && (
+                          <span className="text-[10px] font-extrabold rounded-full" style={{ background: "#FF6F61", color: "#fff", padding: "1px 7px", letterSpacing: "0.5px" }}>NEW</span>
+                        )}
+                      </p>
                       <p className="mt-0.5 mb-0 text-[12.5px] text-plum-soft">{o.id} · {o.phone}</p>
                     </div>
                     <div>
@@ -577,8 +657,12 @@ export default function AdminApp({
                       <p className="mt-0.5 mb-0 text-[12.5px] text-plum-soft">{o.theme}</p>
                     </div>
                     <div>
-                      <p className="m-0 font-bold text-sm">{prettyDate(o.date)}</p>
-                      <p className="mt-0.5 mb-0 text-[12.5px] text-plum-soft">{o.address} {o.postcode}</p>
+                      <p className="m-0 font-bold text-sm">{prettyDate(o.date)} · <span className="text-plum-soft font-normal">{o.postcode}</span></p>
+                      <p className="mt-0.5 mb-0 text-[12.5px] text-plum-soft">
+                        {makerOf(o) ? <>🔨 {makerOf(o)}</> : <span style={{ color: "#c14a3e" }}>needs maker</span>}
+                        {" · "}
+                        {delivererOf(o) ? <>🚗 {delivererOf(o)}</> : <span style={{ color: "#c14a3e" }}>needs driver</span>}
+                      </p>
                     </div>
                     <div>
                       <p className="m-0 font-extrabold text-[15px] text-coral">{orderTotal(o)}</p>
@@ -954,6 +1038,8 @@ export default function AdminApp({
         order={selectedOrder}
         onClose={() => setSelectedOrderId(null)}
         onStatusChange={setStatus}
+        onSetMaker={setMaker}
+        onSetDeliverer={setDeliverer}
       />
 
       <style>{`.jn-click:hover { box-shadow: 0 6px 18px rgba(74,44,77,0.14); transform: translateY(-1px); transition: box-shadow .12s, transform .12s; }`}</style>

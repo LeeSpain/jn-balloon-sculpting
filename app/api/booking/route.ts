@@ -121,6 +121,8 @@ export async function POST(req: Request) {
     delivery: isBooking && zoneOk ? (zone!.fee as number) : 0,
     status: "Order received",
     depositPaid: 0,
+    acknowledged: false, // triage: awaits the team's Making/Delivering assignment
+    createdAt: new Date().toISOString(),
   };
 
   // CRM: auto-create or update the customer's contact record from this
