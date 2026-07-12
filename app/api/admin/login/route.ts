@@ -6,14 +6,23 @@ import { checkRateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
+const LOGIN_WINDOW_MS = 5 * 60 * 1000;
+
 export async function POST(req: Request) {
   if (!sameOrigin(req)) {
     return NextResponse.json({ error: "Bad origin." }, { status: 403 });
   }
   // Throttle password guessing: 10 attempts / 5 min per IP (durable when a DB is
   // connected, so it holds across serverless instances).
-  if (!(await checkRateLimit(`login:${clientIp(req)}`, 10, 5 * 60 * 1000))) {
-    return NextResponse.json({ error: "Too many attempts — try again shortly." }, { status: 429 });
+  if (!(await checkRateLimit(`login:${clientIp(req)}`, 10, LOGIN_WINDOW_MS))) {
+    const minutes = Math.ceil(LOGIN_WINDOW_MS / 60000);
+    return NextResponse.json(
+      {
+        error: `Too many attempts. Please wait about ${minutes} minutes and try again.`,
+        retryAfterMinutes: minutes,
+      },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(LOGIN_WINDOW_MS / 1000)) } },
+    );
   }
 
   let password = "";

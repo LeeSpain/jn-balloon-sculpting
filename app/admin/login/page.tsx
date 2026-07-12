@@ -1,16 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function AdminLogin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const router = useRouter();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -19,16 +18,29 @@ export default function AdminLogin() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
       });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || "Login failed.");
+
+      if (res.ok) {
+        // Hard navigation (not router.replace): a full page load is guaranteed to
+        // re-run the auth middleware and render /admin, so the spinner can never
+        // be stranded by a stalled client-side (RSC) navigation. Keep busy=true —
+        // the page is unloading.
+        window.location.assign("/admin");
+        return;
       }
-      router.replace("/admin");
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed.");
-      setBusy(false);
+
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (res.status === 429) {
+        setError(data.error || "Too many attempts. Please wait a few minutes and try again.");
+      } else if (res.status === 401) {
+        setError(data.error || "Incorrect password.");
+      } else {
+        setError(data.error || `Login failed (${res.status}). Please try again.`);
+      }
+    } catch {
+      setError("Couldn’t reach the server. Check your connection and try again.");
     }
+    // Reached on every non-navigating (error) path — the spinner always clears.
+    setBusy(false);
   }
 
   return (
