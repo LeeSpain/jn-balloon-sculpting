@@ -117,6 +117,13 @@ export class PostgresRepository implements StoreRepository {
     await getPool().query(`DELETE FROM store_contacts WHERE id = $1`, [id]);
   }
 
+  // Permanent removal — write() never deletes orders, so this is the only way a
+  // record actually leaves the table (used to purge junk/test orders).
+  async deleteOrder(id: string): Promise<void> {
+    await ensureSchema();
+    await getPool().query(`DELETE FROM store_orders WHERE id = $1`, [id]);
+  }
+
   async reset(): Promise<Store> {
     await ensureSchema();
     const p = getPool();

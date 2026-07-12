@@ -157,6 +157,11 @@ export interface Order {
   deliverer?: Assignee; // who's DELIVERING it (delivery event)
   acknowledged?: boolean; // triage: has the team seen & assigned this order?
   createdAt?: string; // ISO — when the order was placed (for the >24h waiting flag)
+  // Cancelled & archived: kept on record but excluded from the active pipeline,
+  // finance, calendar and availability. Reversible (restore). Distinct from a
+  // permanent delete, which removes the record entirely.
+  archived?: boolean;
+  archivedAt?: string; // ISO — when it was cancelled & archived
 }
 
 // Personal / blocked time on the calendar (school runs, holidays, days off).

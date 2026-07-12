@@ -61,7 +61,8 @@ export interface FinanceSummary {
 }
 
 export function computeFinance(store: Store, basis: FinanceBasis): FinanceSummary {
-  let orders = store.orders;
+  // Archived (cancelled) orders never count towards revenue or profit.
+  let orders = store.orders.filter((o) => !o.archived);
   if (basis === "delivered") orders = orders.filter((o) => o.status === "Delivered");
   else if (basis === "active") orders = orders.filter((o) => o.status !== "Delivered");
   return computeFinanceForOrders(store, orders, basis);

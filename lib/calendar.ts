@@ -61,7 +61,7 @@ export function isDayBlocked(store: Store, dateISO: string): boolean {
   return (store.blocks || []).some((b) => b.kind === "blocked" && blockOccursOn(b, dateISO));
 }
 export function deliveriesOn(store: Store, dateISO: string): number {
-  return (store.orders || []).filter((o) => o.date === dateISO).length;
+  return (store.orders || []).filter((o) => o.date === dateISO && !o.archived).length;
 }
 export function maxPerDay(store: Store): number {
   return store.settings.maxDeliveriesPerDay > 0 ? store.settings.maxDeliveriesPerDay : 3;
@@ -90,6 +90,7 @@ export function eventsInRange(store: Store, fromISO: string, toISO: string): Cal
   const productName = (id: string) => store.products.find((p) => p.id === id)?.name || id;
 
   for (const o of store.orders || []) {
+    if (o.archived) continue; // cancelled — no build/delivery events
     if (inRange(o.date)) {
       events.push({
         id: `del-${o.id}`, type: "delivery", date: o.date,
@@ -140,6 +141,7 @@ export function conflicts(store: Store, fromISO: string, toISO: string): Conflic
   const out: Conflict[] = [];
   const seenDays = new Set<string>();
   for (const o of store.orders || []) {
+    if (o.archived) continue;
     if (o.date >= fromISO && o.date <= toISO && !seenDays.has(o.date)) {
       seenDays.add(o.date);
       const n = deliveriesOn(store, o.date);
@@ -205,7 +207,7 @@ export function isUnacknowledged(o: Order): boolean {
   return o.acknowledged !== true;
 }
 export function unacknowledgedOrders(store: Store): Order[] {
-  return (store.orders || []).filter(isUnacknowledged);
+  return (store.orders || []).filter((o) => isUnacknowledged(o) && !o.archived);
 }
 // Whole days an order has waited since it was placed (for the >24h / "waiting N days" flag).
 export function daysWaiting(o: Order, nowISO: string): number {

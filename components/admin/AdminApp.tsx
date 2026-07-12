@@ -12,6 +12,7 @@ import FinanceTab from "./FinanceTab";
 import PricingTab from "./PricingTab";
 import SiteCopyEditor from "./SiteCopyEditor";
 import OrderDetailModal from "./OrderDetailModal";
+import ConfirmActionModal from "./ConfirmActionModal";
 import PaymentsSettings from "./PaymentsSettings";
 import ContactsTab from "./ContactsTab";
 import CalendarTab from "./CalendarTab";
@@ -101,6 +102,9 @@ export default function AdminApp({
   const [newTheme, setNewTheme] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [jobFilter, setJobFilter] = useState<"all" | "Jade" | "Nicole">("all"); // Orders "my jobs" filter
+  const [showArchived, setShowArchived] = useState(false); // reveal cancelled orders in the list
+  // Pending destructive action awaiting confirmation (archive/restore/delete).
+  const [confirmAction, setConfirmAction] = useState<{ kind: "archive" | "delete"; orderId: string } | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string>("");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -259,7 +263,7 @@ export default function AdminApp({
 
   // ---- overview derived (finance figures come straight from the P&L engine) ----
   const { greeting, stats, upcoming, alerts } = useMemo(() => {
-    const active = store.orders.filter((o) => o.status !== "Delivered");
+    const active = store.orders.filter((o) => o.status !== "Delivered" && !o.archived);
     const upcoming = active.slice().sort((a, b) => a.date.localeCompare(b.date));
     const fin = computeFinance(store, "active");
     const hour = new Date().getHours();
@@ -375,11 +379,45 @@ export default function AdminApp({
     }
   }
 
+  // Cancel & archive: reversible, keeps the record but drops it from the active
+  // pipeline, finance, calendar and availability.
+  function archiveOrder(id: string) {
+    commit((d) => {
+      const o = d.orders.find((x) => x.id === id);
+      if (o) { o.archived = true; o.archivedAt = new Date().toISOString(); }
+    });
+    setSelectedOrderId(null);
+  }
+  function restoreOrder(id: string) {
+    commit((d) => {
+      const o = d.orders.find((x) => x.id === id);
+      if (o) { o.archived = false; delete o.archivedAt; }
+    });
+  }
+  // Permanent delete via the dedicated endpoint (write() never removes orders, so
+  // a plain save wouldn't actually delete the row).
+  async function deleteOrder(id: string) {
+    setSaveState("saving");
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Delete failed");
+      const j = await res.json();
+      if (j.store) setStore(j.store);
+      setSaveState("saved");
+    } catch (e) {
+      setSaveState("error");
+      setSaveError(e instanceof Error ? e.message : "Delete failed");
+    }
+    setSelectedOrderId(null);
+  }
+
   const pendingCount = unacknowledgedOrders(store).length;
-  const orderRows = store.orders
+  const jobRows = store.orders
     .slice()
     .filter((o) => jobFilter === "all" || personOnOrder(o, jobFilter))
     .sort((a, b) => a.date.localeCompare(b.date));
+  const orderRows = jobRows.filter((o) => !o.archived);
+  const archivedRows = jobRows.filter((o) => o.archived);
 
   return (
     <div>
@@ -665,21 +703,77 @@ export default function AdminApp({
                       <p className="m-0 font-extrabold text-[15px] text-coral">{orderTotal(o)}</p>
                       <p className="mt-0.5 mb-0 text-[12.5px] font-bold" style={{ color: profit > 0 ? "#3c7a3c" : "#c14a3e" }}>profit {gbp(Math.round(profit))}</p>
                     </div>
-                    <select
-                      value={o.status}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => setStatus(o.id, e.target.value as OrderStatus)}
-                      className="border-2 border-blush rounded-xl font-bold bg-cream font-sans"
-                      style={{ padding: "10px 12px", fontSize: "13.5px", minHeight: 44 }}
-                    >
-                      {STATUSES.map((s) => (
-                        <option key={s}>{s}</option>
-                      ))}
-                    </select>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={o.status}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => setStatus(o.id, e.target.value as OrderStatus)}
+                        className="border-2 border-blush rounded-xl font-bold bg-cream font-sans"
+                        style={{ padding: "10px 12px", fontSize: "13.5px", minHeight: 44, flex: 1 }}
+                      >
+                        {STATUSES.map((s) => (
+                          <option key={s}>{s}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setConfirmAction({ kind: "archive", orderId: o.id }); }}
+                        title="Cancel & archive this order"
+                        className="cursor-pointer border-0 rounded-xl font-sans font-bold text-[12.5px]"
+                        style={{ background: "#F2E7D8", color: "#8a6a1a", padding: "10px 12px", minHeight: 44, whiteSpace: "nowrap" }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 );
               })}
+              {orderRows.length === 0 && (
+                <p className="m-0 text-plum-soft text-[14px]">No active orders{jobFilter !== "all" ? ` for ${jobFilter}` : ""}.</p>
+              )}
             </div>
+
+            {/* Cancelled / archived orders — kept on record, restorable, deletable */}
+            {archivedRows.length > 0 && (
+              <div className="mt-6">
+                <button
+                  onClick={() => setShowArchived((v) => !v)}
+                  className="cursor-pointer bg-transparent border-0 font-sans font-extrabold text-[13.5px] text-plum-soft"
+                  style={{ padding: "6px 0" }}
+                >
+                  {showArchived ? "▾" : "▸"} Cancelled orders ({archivedRows.length})
+                </button>
+                {showArchived && (
+                  <div className="flex flex-col gap-2.5 mt-2">
+                    {archivedRows.map((o) => (
+                      <div key={o.id} className={`${card} flex flex-wrap gap-3 items-center`} style={{ padding: "14px 18px", opacity: 0.85 }}>
+                        <div style={{ flex: 1, minWidth: 180 }}>
+                          <p className="m-0 font-bold text-[14.5px] flex items-center gap-1.5">
+                            {o.customer}
+                            <span className="text-[10px] font-extrabold rounded-full" style={{ background: "#EDEAEE", color: "#7a5f7d", padding: "1px 8px", letterSpacing: "0.5px" }}>CANCELLED</span>
+                          </p>
+                          <p className="mt-0.5 mb-0 text-[12.5px] text-plum-soft">{o.id} · {productById(o.product)?.name ?? o.product} · {prettyDate(o.date)} · {orderTotal(o)}</p>
+                        </div>
+                        <button
+                          onClick={() => restoreOrder(o.id)}
+                          className="cursor-pointer border-0 rounded-xl font-sans font-bold text-[12.5px]"
+                          style={{ background: "#E4F0E4", color: "#3c7a3c", padding: "9px 14px", minHeight: 40 }}
+                        >
+                          Restore
+                        </button>
+                        <button
+                          onClick={() => setConfirmAction({ kind: "delete", orderId: o.id })}
+                          title="Delete permanently"
+                          className="cursor-pointer border-0 rounded-xl font-sans font-bold text-[12.5px]"
+                          style={{ background: "#FFE3DF", color: "#c14a3e", padding: "9px 14px", minHeight: 40 }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
 
@@ -967,6 +1061,21 @@ export default function AdminApp({
         onStatusChange={setStatus}
         onSetMaker={setMaker}
         onSetDeliverer={setDeliverer}
+        onArchive={(id) => setConfirmAction({ kind: "archive", orderId: id })}
+        onRestore={restoreOrder}
+        onDelete={(id) => setConfirmAction({ kind: "delete", orderId: id })}
+      />
+
+      {/* Confirmation step for cancel/archive & permanent delete */}
+      <ConfirmActionModal
+        store={store}
+        action={confirmAction}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={(kind, orderId) => {
+          setConfirmAction(null);
+          if (kind === "archive") archiveOrder(orderId);
+          else deleteOrder(orderId);
+        }}
       />
 
       <style>{`.jn-click:hover { box-shadow: 0 6px 18px rgba(74,44,77,0.14); transform: translateY(-1px); transition: box-shadow .12s, transform .12s; }`}</style>
