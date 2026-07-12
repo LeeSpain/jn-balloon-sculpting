@@ -13,4 +13,6 @@ export interface StoreRepository {
   write(store: Store): Promise<void>;
   /** Reset back to seed defaults and return the fresh store. */
   reset(): Promise<Store>;
+  /** Permanently delete a single contact record (GDPR erasure). */
+  deleteContact(id: string): Promise<void>;
 }

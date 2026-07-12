@@ -39,6 +39,10 @@ export function seedStore(): Store {
       stripeMode: "",
       stripeConnected: false,
       acceptCardPayments: false,
+      emailTemplate:
+        "Hi {name},\n\nThank you again for choosing J&N Balloon Sculpting for your {occasion}! We loved making it for you. If you've got another celebration coming up, we'd be delighted to help.\n\nWarm wishes,\nJade & Nicole",
+      whatsappTemplate:
+        "Hi {name}! It's Jade & Nicole from J&N Balloon Sculpting 🎈 Hope you enjoyed your {occasion}! Let us know if we can help with your next celebration.",
       instagram: "",
       facebook: "",
       tiktok: "",
@@ -107,5 +111,6 @@ export function seedStore(): Store {
           { id: "JN-1040", customer: "Dawn Whitfield", phone: "07700 900321", product: "garland", size: "standard", theme: "Bright party", postcode: "PE27 5QQ", address: "8 Priory Road, St Ives", date: offsetDate(-1), price: 58, delivery: 5, status: "Delivered" },
         ] as Order[])
       : [],
+    contacts: [],
   };
 }

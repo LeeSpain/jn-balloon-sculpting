@@ -11,6 +11,8 @@ import { computeFinance } from "@/lib/finance";
 import FinanceTab from "./FinanceTab";
 import OrderDetailModal from "./OrderDetailModal";
 import PaymentsSettings from "./PaymentsSettings";
+import ContactsTab from "./ContactsTab";
+import { followUpsDue, anniversaries, prettyDate as crmPretty, normContact, ordersForContact } from "@/lib/crm";
 
 // Downscale a chosen image on the client and return a compressed Blob. Vector
 // and animated formats are passed through untouched. Photos become JPEG; logos
@@ -45,7 +47,7 @@ async function compressImage(
   });
 }
 
-type Tab = "overview" | "orders" | "finance" | "pricing" | "zones" | "content" | "settings";
+type Tab = "overview" | "orders" | "contacts" | "finance" | "pricing" | "zones" | "content" | "settings";
 
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
   "Order received": { bg: "#F3C6C6", color: "#4A2C4D" },
@@ -244,6 +246,7 @@ export default function AdminApp({
   const tabDefs: { id: Tab; label: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "orders", label: "Orders" },
+    { id: "contacts", label: "Contacts" },
     { id: "finance", label: "Finance" },
     { id: "pricing", label: "Costs & pricing" },
     { id: "zones", label: "Delivery zones" },
@@ -310,7 +313,31 @@ export default function AdminApp({
         o.stockTaken = true;
       }
       o.status = next;
+      // Keep the linked CRM contact's pipeline in step: a delivered order moves
+      // the contact to Delivered, or Repeat customer once they have 2+ delivered.
+      if (next === "Delivered") {
+        const c = (d.contacts || []).find((x) => normContact(x.phone) === normContact(o.phone) || normContact(x.email) === normContact(o.phone));
+        if (c) {
+          const delivered = ordersForContact(d, c).filter((x) => x.status === "Delivered").length;
+          c.status = delivered >= 2 ? "Repeat customer" : "Delivered";
+        }
+      }
     });
+  }
+
+  // GDPR erasure — dedicated endpoint (anonymises orders, purges the contact row).
+  async function deleteContact(id: string) {
+    setSaveState("saving");
+    try {
+      const res = await fetch(`/api/admin/contacts/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Delete failed");
+      const j = await res.json();
+      if (j.store) setStore(j.store);
+      setSaveState("saved");
+    } catch (e) {
+      setSaveState("error");
+      setSaveError(e instanceof Error ? e.message : "Delete failed");
+    }
   }
 
   const orderRows = store.orders.slice().sort((a, b) => a.date.localeCompare(b.date));
@@ -442,6 +469,40 @@ export default function AdminApp({
                 ))}
               </div>
             )}
+            {(() => {
+              const today = new Date().toISOString().slice(0, 10);
+              const fu = followUpsDue(store, today);
+              const anv = anniversaries(store, today);
+              return (
+                <div className="grid gap-3.5 mb-7" style={{ gridTemplateColumns: fu.length && anv.length ? "repeat(auto-fit, minmax(280px, 1fr))" : "1fr" }}>
+                  {fu.length > 0 && (
+                    <div className="rounded-2xl" style={{ background: "#fff", border: "2px solid #E6C88A", padding: "16px 20px" }}>
+                      <p className="m-0 mb-2 font-extrabold text-[13px] text-gold-ink" style={{ letterSpacing: "1px" }}>FOLLOW-UPS DUE</p>
+                      {fu.map((f) => (
+                        <div key={f.contact.id} className="flex justify-between items-center gap-2 flex-wrap" style={{ padding: "4px 0" }}>
+                          <span className="text-[14px] font-semibold">{f.contact.name} <span className="text-plum-soft font-normal">· {f.contact.status}</span></span>
+                          <span className="flex items-center gap-2">
+                            <span className="text-[12.5px] font-bold" style={{ color: f.overdue ? "#c14a3e" : "#8a6a1a" }}>{f.overdue ? "overdue · " : ""}{crmPretty(f.due)}</span>
+                            <button onClick={() => setTab("contacts")} className="cursor-pointer bg-cream border-0 rounded-full text-[12px] font-bold" style={{ padding: "5px 10px" }}>View</button>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {anv.length > 0 && (
+                    <div className="rounded-2xl" style={{ background: "#fff", border: "2px solid #F3C6C6", padding: "16px 20px" }}>
+                      <p className="m-0 mb-2 font-extrabold text-[13px]" style={{ letterSpacing: "1px", color: "#a35a7a" }}>🎉 ANNIVERSARIES COMING UP</p>
+                      {anv.map((a, i) => (
+                        <div key={i} className="flex justify-between items-center gap-2 flex-wrap" style={{ padding: "4px 0" }}>
+                          <span className="text-[14px] font-semibold">{a.name} <span className="text-plum-soft font-normal">· {a.occasion}</span></span>
+                          <span className="text-[12.5px] text-plum-soft">{a.yearsAgo} yr ago · again {crmPretty(a.nextDate)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             <h2 className="font-display m-0 mb-3.5" style={{ fontSize: 22 }}>Upcoming deliveries</h2>
             <div className="flex flex-col gap-2.5">
               {upcoming.map((o) => {
@@ -517,6 +578,11 @@ export default function AdminApp({
               })}
             </div>
           </>
+        )}
+
+        {/* CONTACTS (CRM) */}
+        {tab === "contacts" && (
+          <ContactsTab store={store} commit={commit} onDelete={deleteContact} />
         )}
 
         {/* FINANCE */}
