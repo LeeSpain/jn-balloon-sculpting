@@ -86,7 +86,15 @@ export default function CalendarTab({
   };
 
   const setAssignee = (e: CalEvent, a: Assignee) => {
-    if (e.orderId) commit((d) => { const o = d.orders.find((x) => x.id === e.orderId); if (o) o.assignee = a; });
+    // A build slot assigns the MAKER; a delivery event assigns the DELIVERER —
+    // so "who's on today" reflects making vs delivering, not one lumped owner.
+    if (e.orderId) commit((d) => {
+      const o = d.orders.find((x) => x.id === e.orderId);
+      if (!o) return;
+      if (e.type === "build") o.maker = a;
+      else if (e.type === "delivery") o.deliverer = a;
+      else o.assignee = a;
+    });
     else if (e.contactId) commit((d) => { const c = d.contacts.find((x) => x.id === e.contactId); if (c) c.assignee = a; });
     else if (e.blockId) commit((d) => { const b = d.blocks.find((x) => x.id === e.blockId); if (b) b.assignee = a; });
   };
@@ -266,9 +274,12 @@ function DayDetail({ store, date, events, onOpen, onAssign }: { store: Store; da
               {e.subtitle && <span className="text-[12.5px] text-plum-soft"> · {e.subtitle}</span>}
             </span>
             {(e.orderId || e.contactId || e.blockId) && (
-              <select value={e.assignee || ""} onChange={(ev) => onAssign(e, ev.target.value as Assignee)} className="rounded-lg bg-white border-2 border-blush text-[12px]" style={{ padding: "3px 6px" }}>
-                <option value="">Unassigned</option>{ASSIGNEES.map((a) => <option key={a} value={a}>{a}</option>)}
-              </select>
+              <label className="flex items-center gap-1.5 text-[11px] font-bold text-plum-soft">
+                {e.type === "build" ? "Making" : e.type === "delivery" ? "Delivering" : "Owner"}
+                <select value={e.assignee || ""} onChange={(ev) => onAssign(e, ev.target.value as Assignee)} className="rounded-lg bg-white border-2 border-blush text-[12px]" style={{ padding: "3px 6px" }}>
+                  <option value="">Unassigned</option>{ASSIGNEES.map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </label>
             )}
           </div>
         );

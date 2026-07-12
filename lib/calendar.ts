@@ -94,7 +94,7 @@ export function eventsInRange(store: Store, fromISO: string, toISO: string): Cal
       events.push({
         id: `del-${o.id}`, type: "delivery", date: o.date,
         title: productName(o.product), subtitle: `${o.customer} · ${o.postcode}`,
-        assignee: o.assignee, orderId: o.id,
+        assignee: delivererOf(o), orderId: o.id,
       });
     }
     const bd = buildDateFor(store, o);
@@ -102,7 +102,7 @@ export function eventsInRange(store: Store, fromISO: string, toISO: string): Cal
       events.push({
         id: `bld-${o.id}`, type: "build", date: bd,
         title: `Build: ${productName(o.product)}`, subtitle: `${o.customer}${isHelium(store, o.product) ? " · helium, same-day" : ""}`,
-        assignee: o.assignee, orderId: o.id,
+        assignee: makerOf(o), orderId: o.id,
       });
     }
   }
@@ -182,4 +182,35 @@ export const ASSIGNEES: Assignee[] = ["Jade", "Nicole", "Both"];
 // Small helper so the follow-up widgets and calendar agree on "today".
 export function contactHasFollowUp(c: Contact): boolean {
   return !!c.followUpDate;
+}
+
+// ---- triage: making vs delivering ----
+// Who builds it (calendar build slot). Falls back to the legacy single owner.
+export function makerOf(o: Order): Assignee | undefined {
+  return o.maker || o.assignee;
+}
+// Who delivers it (calendar delivery event).
+export function delivererOf(o: Order): Assignee | undefined {
+  return o.deliverer || o.assignee;
+}
+// A person is "on" this order if they make OR deliver it (for the by-person filter).
+export function personOnOrder(o: Order, who: Assignee): boolean {
+  const m = makerOf(o), d = delivererOf(o);
+  const covers = (a: Assignee | undefined) => a === who || a === "Both" || who === "Both";
+  return covers(m) || covers(d);
+}
+
+// An order needs triage until someone has acknowledged it.
+export function isUnacknowledged(o: Order): boolean {
+  return o.acknowledged !== true;
+}
+export function unacknowledgedOrders(store: Store): Order[] {
+  return (store.orders || []).filter(isUnacknowledged);
+}
+// Whole days an order has waited since it was placed (for the >24h / "waiting N days" flag).
+export function daysWaiting(o: Order, nowISO: string): number {
+  if (!o.createdAt) return 0;
+  const then = new Date(o.createdAt).getTime();
+  const now = new Date(nowISO).getTime();
+  return Math.max(0, Math.floor((now - then) / 86400000));
 }

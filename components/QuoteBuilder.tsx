@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PublicData, PublicZone } from "@/lib/publicData";
 import { assetUrl } from "@/lib/assets";
+import AvailabilityPicker from "./AvailabilityPicker";
 
 function gbp(n: number | null | undefined): string {
   if (n == null || isNaN(Number(n))) return "—";
@@ -356,19 +357,18 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
             className={input}
           />
         </label>
-        <label className={label}>
-          Delivery date
-          <input
-            type="date"
+        <div className={label}>
+          <span>Delivery date</span>
+          <AvailabilityPicker
             value={date}
-            min={data.minDate}
-            onChange={(e) => {
-              setDate(e.target.value);
+            minDate={data.minDate}
+            unavailableDates={data.unavailableDates || []}
+            onChange={(iso) => {
+              setDate(iso);
               setBookedMsg(null);
             }}
-            className={input}
           />
-        </label>
+        </div>
       </div>
       <p className="m-0 mb-6 text-[13px] text-plum-soft">{q.zoneMsg}</p>
 

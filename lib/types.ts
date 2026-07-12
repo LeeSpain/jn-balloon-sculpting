@@ -125,7 +125,11 @@ export interface Order {
   stockTaken?: boolean;
   awaitingPayment?: boolean; // true until Stripe confirms payment via webhook
   buildDate?: string; // when to build it (defaults to day-before, same-day for helium)
-  assignee?: Assignee; // who's on this order (delivery + build)
+  assignee?: Assignee; // legacy: single owner (superseded by maker/deliverer)
+  maker?: Assignee; // who's MAKING it (build slot)
+  deliverer?: Assignee; // who's DELIVERING it (delivery event)
+  acknowledged?: boolean; // triage: has the team seen & assigned this order?
+  createdAt?: string; // ISO — when the order was placed (for the >24h waiting flag)
 }
 
 // Personal / blocked time on the calendar (school runs, holidays, days off).
