@@ -7,6 +7,7 @@ import {
   type CalEvent, type EventType,
 } from "@/lib/calendar";
 import { normContact } from "@/lib/crm";
+import { toIntlDigits } from "@/lib/phone";
 import { uid } from "@/lib/ids";
 
 const card = "bg-white rounded-2xl shadow-card";
@@ -267,19 +268,35 @@ function DayDetail({ store, date, events, onOpen, onAssign }: { store: Store; da
       {events.map((e) => {
         const s = EVENT_STYLE[e.type];
         return (
-          <div key={e.id} className="flex items-center gap-2.5 flex-wrap" style={{ padding: "7px 10px", borderRadius: 10, background: "#FBF7F2", borderLeft: `4px solid ${s.bg}` }}>
-            <span className="text-[10px] font-extrabold rounded-full" style={{ background: s.bg, color: s.fg, padding: "2px 8px" }}>{e.type === "personal" ? "PERSONAL" : e.type.toUpperCase()}</span>
-            <span className="flex-1 min-w-[140px]">
-              <span className="font-bold text-[14px] cursor-pointer" onClick={() => onOpen(e)}>{e.title}</span>
-              {e.subtitle && <span className="text-[12.5px] text-plum-soft"> · {e.subtitle}</span>}
-            </span>
-            {(e.orderId || e.contactId || e.blockId) && (
-              <label className="flex items-center gap-1.5 text-[11px] font-bold text-plum-soft">
-                {e.type === "build" ? "Making" : e.type === "delivery" ? "Delivering" : "Owner"}
-                <select value={e.assignee || ""} onChange={(ev) => onAssign(e, ev.target.value as Assignee)} className="rounded-lg bg-white border-2 border-blush text-[12px]" style={{ padding: "3px 6px" }}>
-                  <option value="">Unassigned</option>{ASSIGNEES.map((a) => <option key={a} value={a}>{a}</option>)}
-                </select>
-              </label>
+          <div key={e.id} style={{ padding: "7px 10px", borderRadius: 10, background: "#FBF7F2", borderLeft: `4px solid ${s.bg}` }}>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="text-[10px] font-extrabold rounded-full" style={{ background: s.bg, color: s.fg, padding: "2px 8px" }}>{e.type === "personal" ? "PERSONAL" : e.type.toUpperCase()}</span>
+              <span className="flex-1 min-w-[140px]">
+                <span className="font-bold text-[14px] cursor-pointer" onClick={() => onOpen(e)}>{e.title}</span>
+                {e.subtitle && <span className="text-[12.5px] text-plum-soft"> · {e.subtitle}</span>}
+              </span>
+              {(e.orderId || e.contactId || e.blockId) && (
+                <label className="flex items-center gap-1.5 text-[11px] font-bold text-plum-soft">
+                  {e.type === "build" ? "Making" : e.type === "delivery" ? "Delivering" : "Owner"}
+                  <select value={e.assignee || ""} onChange={(ev) => onAssign(e, ev.target.value as Assignee)} className="rounded-lg bg-white border-2 border-blush text-[12px]" style={{ padding: "3px 6px" }}>
+                    <option value="">Unassigned</option>{ASSIGNEES.map((a) => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </label>
+              )}
+            </div>
+            {/* On the day, the deliverer needs the number + any note in one tap. */}
+            {(e.phone || e.notes) && (
+              <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 6 }}>
+                {e.phone && (
+                  <>
+                    <a href={`tel:${e.phone}`} className="no-underline rounded-full font-sans font-extrabold text-[11.5px]" style={{ background: "#EDEAEE", color: "#4A2C4D", padding: "5px 11px" }}>📞 {e.phone}</a>
+                    <a href={`https://wa.me/${toIntlDigits(e.phone)}`} target="_blank" rel="noreferrer" className="no-underline rounded-full font-sans font-extrabold text-[11.5px] text-white" style={{ background: "#25D366", padding: "5px 11px" }}>WhatsApp</a>
+                  </>
+                )}
+                {e.notes && (
+                  <span className="text-[12px] rounded-lg" style={{ background: "#FFF8ED", border: "1px solid #E6C88A", color: "#8a6a1a", padding: "5px 9px", whiteSpace: "pre-wrap" }}>📝 {e.notes}</span>
+                )}
+              </div>
             )}
           </div>
         );

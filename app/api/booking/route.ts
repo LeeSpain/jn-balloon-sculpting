@@ -15,6 +15,7 @@ import { sameOrigin, clientIp } from "@/lib/security";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { upsertContactFromOrder } from "@/lib/crm";
 import { isDeliveryAvailable } from "@/lib/calendar";
+import { normalizeUkMobile, isEmailValid } from "@/lib/phone";
 import type { Order } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -27,13 +28,21 @@ interface Body {
   postcode: string;
   date: string;
   custName: string;
-  custContact: string;
+  custEmail: string;
+  custMobile: string;
+  notes: string;
   marketingConsent: boolean;
 }
 
 // Trim + hard-cap a free-text field so a hostile client can't store megabytes.
 function clean(v: unknown, max: number): string {
   return String(v ?? "").trim().slice(0, max);
+}
+
+// Strip control characters (keep newlines/tabs) from free text before storing.
+function sanitizeNotes(v: unknown): string {
+  // eslint-disable-next-line no-control-regex
+  return clean(v, 500).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
 }
 
 export async function POST(req: Request) {
@@ -63,13 +72,24 @@ export async function POST(req: Request) {
     postcode: clean(raw.postcode, 12),
     date: clean(raw.date, 10),
     custName: clean(raw.custName, 120),
-    custContact: clean(raw.custContact, 160),
+    custEmail: clean(raw.custEmail, 160),
+    custMobile: clean(raw.custMobile, 40),
+    notes: sanitizeNotes(raw.notes),
     marketingConsent: raw.marketingConsent === true,
   };
 
-  if (!body.custName || !body.custContact) {
+  // Name, a valid email, AND a valid UK mobile are all required — deliveries are
+  // confirmed by WhatsApp/text, so mobile isn't optional. Validate loudly.
+  if (!body.custName) {
+    return NextResponse.json({ error: "Please add your name so we can confirm your booking." }, { status: 400 });
+  }
+  if (!isEmailValid(body.custEmail)) {
+    return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
+  }
+  const mobile = normalizeUkMobile(body.custMobile);
+  if (!mobile) {
     return NextResponse.json(
-      { error: "Please add your name and a mobile number or email so we can confirm your booking." },
+      { error: "Please enter a valid UK mobile number (e.g. 07700 900123) so we can confirm your delivery." },
       { status: 400 },
     );
   }
@@ -110,7 +130,9 @@ export async function POST(req: Request) {
   const order: Order = {
     id,
     customer: isBooking ? body.custName : `${body.custName} (custom enquiry)`,
-    phone: body.custContact,
+    phone: mobile,
+    email: body.custEmail,
+    notes: body.notes || undefined,
     product: product.id,
     size: size.id,
     theme: body.theme || store.themes[0],
@@ -129,13 +151,15 @@ export async function POST(req: Request) {
   // order/enquiry. Mutates store.contacts, which both write paths below persist.
   upsertContactFromOrder(store, {
     name: body.custName,
-    rawContact: body.custContact,
+    email: body.custEmail,
+    phone: mobile,
     postcode: order.postcode,
     source: isBooking ? "Website booking" : "Website enquiry",
     status: isBooking ? "Booked" : "New enquiry",
     consent: body.marketingConsent,
     occasion: product.name,
     occasionDate: order.date,
+    note: body.notes || undefined,
     nowISO: new Date().toISOString(),
   });
 
@@ -165,7 +189,7 @@ export async function POST(req: Request) {
             quantity: 1,
           },
         ],
-        customer_email: body.custContact.includes("@") ? body.custContact : undefined,
+        customer_email: body.custEmail || undefined,
         success_url: `${siteUrl}/?booked=${id}#quote`,
         cancel_url: `${siteUrl}/?cancelled=${id}#quote`,
         metadata: { orderId: id },

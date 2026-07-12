@@ -15,6 +15,8 @@ export interface CalEvent {
   orderId?: string;
   contactId?: string;
   blockId?: string;
+  phone?: string; // customer mobile (delivery/build events) — for one-tap call/WhatsApp
+  notes?: string; // customer note (delivery event)
 }
 
 export const EVENT_STYLE: Record<EventType, { bg: string; fg: string }> = {
@@ -95,7 +97,7 @@ export function eventsInRange(store: Store, fromISO: string, toISO: string): Cal
       events.push({
         id: `del-${o.id}`, type: "delivery", date: o.date,
         title: productName(o.product), subtitle: `${o.customer} · ${o.postcode}`,
-        assignee: delivererOf(o), orderId: o.id,
+        assignee: delivererOf(o), orderId: o.id, phone: o.phone, notes: o.notes,
       });
     }
     const bd = buildDateFor(store, o);
@@ -103,7 +105,7 @@ export function eventsInRange(store: Store, fromISO: string, toISO: string): Cal
       events.push({
         id: `bld-${o.id}`, type: "build", date: bd,
         title: `Build: ${productName(o.product)}`, subtitle: `${o.customer}${isHelium(store, o.product) ? " · helium, same-day" : ""}`,
-        assignee: makerOf(o), orderId: o.id,
+        assignee: makerOf(o), orderId: o.id, phone: o.phone, notes: o.notes,
       });
     }
   }
