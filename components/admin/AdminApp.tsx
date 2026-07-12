@@ -841,7 +841,7 @@ export default function AdminApp({
         )}
 
         {tab === "contacts" && (
-          <ContactsTab store={store} commit={commit} onDelete={deleteContact} />
+          <ContactsTab store={store} commit={commit} onDelete={deleteContact} onOpenOrder={setSelectedOrderId} />
         )}
 
         {tab === "enquiries" && (
