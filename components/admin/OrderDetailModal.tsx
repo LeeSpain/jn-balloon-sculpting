@@ -5,6 +5,7 @@ import type { Store, Order, OrderStatus, Assignee } from "@/lib/types";
 import { computeFinanceForOrders } from "@/lib/finance";
 import { gbp } from "@/lib/pricing";
 import { ASSIGNEES, makerOf, delivererOf } from "@/lib/calendar";
+import { toIntlDigits } from "@/lib/phone";
 import PLStatement from "./PLStatement";
 
 const STATUSES: OrderStatus[] = [
@@ -118,6 +119,31 @@ export default function OrderDetailModal({
             {order.address && <Fact label="Address" value={order.address} />}
             {order.depositPaid ? <Fact label="Deposit paid" value={gbp(order.depositPaid)} /> : null}
           </div>
+
+          {/* Customer contact — one-tap call / WhatsApp / email */}
+          <div className="bg-white rounded-2xl shadow-card mb-5" style={{ padding: "14px 18px" }}>
+            <p className="m-0 mb-2.5 text-[11px] font-extrabold text-gold" style={{ letterSpacing: "1px" }}>CUSTOMER CONTACT</p>
+            <div className="flex flex-wrap gap-2.5 items-center">
+              {order.phone && (
+                <>
+                  <span className="font-bold text-[14px]">{order.phone}</span>
+                  <a href={`tel:${order.phone}`} className="no-underline cursor-pointer rounded-full font-sans font-extrabold text-[12.5px]" style={{ background: "#EDEAEE", color: "#4A2C4D", padding: "7px 14px" }}>📞 Call</a>
+                  <a href={`https://wa.me/${toIntlDigits(order.phone)}`} target="_blank" rel="noreferrer" className="no-underline cursor-pointer rounded-full font-sans font-extrabold text-[12.5px] text-white" style={{ background: "#25D366", padding: "7px 14px" }}>WhatsApp</a>
+                </>
+              )}
+              {order.email && (
+                <a href={`mailto:${order.email}`} className="no-underline font-bold text-[13.5px]" style={{ color: "#c9402f" }}>✉ {order.email}</a>
+              )}
+            </div>
+          </div>
+
+          {/* Customer note */}
+          {order.notes && (
+            <div className="rounded-2xl mb-5" style={{ background: "#FFF8ED", border: "2px solid #E6C88A", padding: "14px 18px" }}>
+              <p className="m-0 mb-1.5 text-[11px] font-extrabold text-gold-ink" style={{ letterSpacing: "1px" }}>📝 CUSTOMER NOTE</p>
+              <p className="m-0 text-[14px] text-plum" style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{order.notes}</p>
+            </div>
+          )}
 
           {/* Status control */}
           <div className="flex items-center gap-3 flex-wrap mb-5">

@@ -43,7 +43,9 @@ export function findContact(store: Store, raw: string): Contact | null {
 // contact's email or phone.
 export function ordersForContact(store: Store, contact: Contact): Order[] {
   const keys = [normContact(contact.email), normContact(contact.phone)].filter(Boolean);
-  return (store.orders || []).filter((o) => keys.includes(normContact(o.phone)));
+  return (store.orders || []).filter(
+    (o) => keys.includes(normContact(o.phone)) || (o.email && keys.includes(normContact(o.email))),
+  );
 }
 
 // Money actually received / due: deposits paid, plus the full total for delivered
@@ -64,13 +66,16 @@ function higher(a: ContactStatus, b: ContactStatus): ContactStatus {
 
 export interface ContactSeed {
   name: string;
-  rawContact: string; // the email OR phone the customer entered
+  rawContact?: string; // the email OR phone the customer entered (legacy single field)
+  email?: string; // explicit email (preferred — booking now captures both)
+  phone?: string; // explicit mobile
   postcode: string;
   source: string;
   status: ContactStatus;
   consent: boolean;
   occasion: string;
   occasionDate: string;
+  note?: string; // a customer note to append to the contact's history
   nowISO: string;
 }
 
@@ -78,10 +83,14 @@ export interface ContactSeed {
 // returns the contact. Never downgrades an existing pipeline status.
 export function upsertContactFromOrder(store: Store, seed: ContactSeed): Contact {
   if (!store.contacts) store.contacts = [];
-  const raw = seed.rawContact.trim();
-  const email = isEmail(raw) ? raw : "";
-  const phone = isEmail(raw) ? "" : raw;
-  let c = findContact(store, raw);
+  // Prefer the explicit email/phone; fall back to parsing the legacy rawContact.
+  const raw = (seed.rawContact || "").trim();
+  const email = (seed.email || (isEmail(raw) ? raw : "")).trim();
+  const phone = (seed.phone || (isEmail(raw) ? "" : raw)).trim();
+  const noteLine = seed.note
+    ? `${prettyDate(seed.nowISO.slice(0, 10))} · ${seed.occasion || "enquiry"}: ${seed.note}`
+    : "";
+  let c = findContact(store, email || phone || raw);
   if (!c) {
     c = {
       id: uid("c"),
@@ -91,7 +100,7 @@ export function upsertContactFromOrder(store: Store, seed: ContactSeed): Contact
       postcode: seed.postcode,
       source: seed.source,
       status: seed.status,
-      notes: "",
+      notes: noteLine,
       followUpDate: "",
       marketingConsent: seed.consent,
       occasion: seed.occasion,
@@ -108,6 +117,7 @@ export function upsertContactFromOrder(store: Store, seed: ContactSeed): Contact
     c.status = higher(c.status, seed.status);
     if (seed.occasion) c.occasion = seed.occasion;
     if (seed.occasionDate) c.occasionDate = seed.occasionDate;
+    if (noteLine) c.notes = c.notes ? `${c.notes}\n${noteLine}` : noteLine;
   }
   return c;
 }

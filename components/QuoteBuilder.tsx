@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PublicData, PublicZone } from "@/lib/publicData";
 import { assetUrl } from "@/lib/assets";
+import { isEmailValid, isUkMobile } from "@/lib/phone";
 import AvailabilityPicker from "./AvailabilityPicker";
+
+const NOTES_MAX = 500;
 
 function gbp(n: number | null | undefined): string {
   if (n == null || isNaN(Number(n))) return "—";
@@ -57,7 +60,9 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
   const [postcode, setPostcode] = useState("");
   const [date, setDate] = useState("");
   const [custName, setCustName] = useState("");
-  const [custContact, setCustContact] = useState("");
+  const [custEmail, setCustEmail] = useState("");
+  const [custMobile, setCustMobile] = useState("");
+  const [notes, setNotes] = useState("");
   const [marketingConsent, setMarketingConsent] = useState(false); // unticked by default (GDPR)
   const [warnMsg, setWarnMsg] = useState<string | null>(null);
   const [bookedMsg, setBookedMsg] = useState<string | null>(null);
@@ -182,22 +187,17 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
       : { borderColor: "#F3C6C6", background: "#fff" };
 
   function validDetails(): boolean {
-    if (!custName.trim() || !custContact.trim()) {
-      setWarnMsg(
-        "Please add your name and a mobile number or email (step 5) so we can confirm your booking."
-      );
-      setBookedMsg(null);
+    setBookedMsg(null);
+    if (!custName.trim()) {
+      setWarnMsg("Please add your name (step 5) so we can confirm your booking.");
       return false;
     }
-    // Light sanity check: a real email or a phone number with enough digits.
-    const c = custContact.trim();
-    const looksEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c);
-    const looksPhone = (c.match(/\d/g) || []).length >= 7;
-    if (!looksEmail && !looksPhone) {
-      setWarnMsg(
-        "That contact doesn’t look right — please enter a valid email or a phone number so we can reach you."
-      );
-      setBookedMsg(null);
+    if (!isEmailValid(custEmail)) {
+      setWarnMsg("Please enter a valid email address so we can send your confirmation.");
+      return false;
+    }
+    if (!isUkMobile(custMobile)) {
+      setWarnMsg("Please enter a valid UK mobile number (e.g. 07700 900123) — we confirm deliveries by text or WhatsApp.");
       return false;
     }
     return true;
@@ -219,7 +219,9 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
           postcode,
           date,
           custName,
-          custContact,
+          custEmail,
+          custMobile,
+          notes,
           marketingConsent,
         }),
       });
@@ -376,32 +378,66 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
       <h3 className="text-sm font-extrabold m-0 mb-3">
         <span className="text-coral-deep">5.</span> Your details
       </h3>
-      <div className="flex gap-3.5 flex-wrap mb-6">
+      <div className="flex gap-3.5 flex-wrap mb-4">
         <label className={label}>
           Your name
           <input
             value={custName}
-            onChange={(e) => {
-              setCustName(e.target.value);
-              setWarnMsg(null);
-            }}
+            onChange={(e) => { setCustName(e.target.value); setWarnMsg(null); }}
             placeholder="e.g. Sophie Turner"
             className={input}
           />
         </label>
         <label className={label}>
-          Mobile or email
+          Email
           <input
-            value={custContact}
-            onChange={(e) => {
-              setCustContact(e.target.value);
-              setWarnMsg(null);
-            }}
+            type="email"
+            value={custEmail}
+            onChange={(e) => { setCustEmail(e.target.value); setWarnMsg(null); }}
+            placeholder="you@example.com"
+            className={input}
+            style={custEmail && !isEmailValid(custEmail) ? { borderColor: "#FF6F61" } : undefined}
+          />
+          {custEmail && !isEmailValid(custEmail) && (
+            <span className="text-[11.5px] font-bold" style={{ color: "#c14a3e" }}>Please enter a valid email address.</span>
+          )}
+        </label>
+        <label className={label}>
+          Mobile
+          <input
+            type="tel"
+            value={custMobile}
+            onChange={(e) => { setCustMobile(e.target.value); setWarnMsg(null); }}
             placeholder="07700 900123"
             className={input}
+            style={custMobile && !isUkMobile(custMobile) ? { borderColor: "#FF6F61" } : undefined}
           />
+          <span className="text-[11.5px] font-normal" style={{ color: custMobile && !isUkMobile(custMobile) ? "#c14a3e" : "#7a5f7d" }}>
+            {custMobile && !isUkMobile(custMobile)
+              ? "Please enter a valid UK mobile number."
+              : "We confirm your delivery by text or WhatsApp."}
+          </span>
         </label>
       </div>
+
+      {/* Notes — optional, not a price modifier */}
+      <label className={label} style={{ maxWidth: "none", marginBottom: 24 }}>
+        Anything we should know? <span className="font-normal text-plum-soft">(optional)</span>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value.slice(0, NOTES_MAX))}
+          maxLength={NOTES_MAX}
+          rows={2}
+          placeholder="Colour preferences, the occasion, delivery instructions (e.g. leave with a neighbour)…"
+          className={input}
+          style={{ resize: "vertical" }}
+        />
+        <span className="text-[11.5px] font-normal text-plum-soft flex justify-between">
+          <span>Just a message to us — it won’t change your price. Custom pieces? Use “Request custom quote”.</span>
+          <span>{notes.length}/{NOTES_MAX}</span>
+        </span>
+      </label>
+
       <label className="flex items-start gap-2.5 mb-1 cursor-pointer" style={{ fontSize: 13, color: "#7a5f7d" }}>
         <input
           type="checkbox"

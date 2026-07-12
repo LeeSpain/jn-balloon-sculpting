@@ -717,6 +717,9 @@ export default function AdminApp({
                         {o.acknowledged === false && (
                           <span className="text-[10px] font-extrabold rounded-full" style={{ background: "#FF6F61", color: "#fff", padding: "1px 7px", letterSpacing: "0.5px" }}>NEW</span>
                         )}
+                        {o.notes && (
+                          <span title={o.notes} className="text-[10px] font-extrabold rounded-full" style={{ background: "#FFF8ED", color: "#8a6a1a", border: "1px solid #E6C88A", padding: "1px 7px" }}>📝 NOTE</span>
+                        )}
                       </p>
                       <p className="mt-0.5 mb-0 text-[12.5px] text-plum-soft">{o.id} · {o.phone}</p>
                     </div>

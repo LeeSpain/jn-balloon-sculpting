@@ -117,12 +117,18 @@ function TriageRow({
         </p>
         <p className="mt-0.5 mb-0 text-[12.5px] text-plum-soft">
           {o.id} · {prettyDate(o.date)} · {o.postcode}
+          {o.phone ? ` · ${o.phone}` : ""}
           {wait >= 1 && (
             <span className="font-bold" style={{ color: "#c14a3e" }}>
               {" "}· waiting {wait === 1 ? "1 day" : `${wait} days`}
             </span>
           )}
         </p>
+        {o.notes && (
+          <p className="mt-1.5 mb-0 text-[12.5px] rounded-lg" style={{ background: "#FFF8ED", border: "1px solid #E6C88A", color: "#8a6a1a", padding: "6px 10px", whiteSpace: "pre-wrap" }}>
+            📝 {o.notes}
+          </p>
+        )}
       </button>
 
       <label className="flex flex-col gap-1 text-[11px] font-extrabold text-gold-ink" style={{ letterSpacing: "0.5px" }}>

@@ -142,7 +142,9 @@ export type Assignee = "Jade" | "Nicole" | "Both";
 export interface Order {
   id: string;
   customer: string;
-  phone: string;
+  phone: string; // customer mobile (UK, normalised 07…) — used for WhatsApp/text
+  email?: string; // customer email
+  notes?: string; // optional "anything we should know?" free text (not a price modifier)
   product: string;
   size: string;
   theme: string;
