@@ -125,7 +125,10 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
     // the customer is never shown a price we won't charge.
     const basePrice = product.priceBySize[size.id] ?? product.fromPrice;
     const zoneOk = !!zone && zone.fee != null;
-    const dateOk = !!date && date >= data.minDate;
+    // A date is bookable only if it clears lead time AND isn't blocked/fully-booked
+    // (the calendar availability engine feeds data.unavailableDates).
+    const available = !(data.unavailableDates || []).includes(date);
+    const dateOk = !!date && date >= data.minDate && available;
     const quoteReady = zoneOk && dateOk;
     const total = quoteReady ? basePrice + (zone!.fee as number) : basePrice;
     const deposit = depositFor(total, s.depositType, s.depositValue);
@@ -140,9 +143,12 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
     if (postcode.trim() && outside) {
       blockedMsg =
         "Beyond 30 miles we quote delivery personally — tap “Request custom quote” below and we’ll come back within 24 hours.";
-    } else if (zoneOk && date && !dateOk) {
+    } else if (zoneOk && date && date < data.minDate) {
       blockedMsg =
         `We need at least ${s.leadDays} days’ notice to build your piece — the earliest date we can deliver is ${prettyDate(data.minDate)}.`;
+    } else if (zoneOk && date && !available) {
+      blockedMsg =
+        "Sorry — that date is fully booked or unavailable. Please choose another day.";
     } else if (!quoteReady) {
       blockedMsg =
         "Add your postcode and a delivery date to see your price" +
@@ -167,7 +173,7 @@ export default function QuoteBuilder({ data }: { data: PublicData }) {
           : `Pay ${gbp(deposit)} deposit`
         : "Book now",
     };
-  }, [postcode, date, product, size, s, data.zones, data.minDate]);
+  }, [postcode, date, product, size, s, data.zones, data.minDate, data.unavailableDates]);
 
   const sel = (on: boolean) =>
     on
