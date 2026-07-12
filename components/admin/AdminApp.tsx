@@ -12,6 +12,8 @@ import FinanceTab from "./FinanceTab";
 import OrderDetailModal from "./OrderDetailModal";
 import PaymentsSettings from "./PaymentsSettings";
 import ContactsTab from "./ContactsTab";
+import CalendarTab from "./CalendarTab";
+import { eventsInRange, EVENT_STYLE } from "@/lib/calendar";
 import { followUpsDue, anniversaries, prettyDate as crmPretty, normContact, ordersForContact } from "@/lib/crm";
 
 // Downscale a chosen image on the client and return a compressed Blob. Vector
@@ -47,7 +49,7 @@ async function compressImage(
   });
 }
 
-type Tab = "overview" | "orders" | "contacts" | "finance" | "pricing" | "zones" | "content" | "settings";
+type Tab = "overview" | "orders" | "contacts" | "calendar" | "finance" | "pricing" | "zones" | "content" | "settings";
 
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
   "Order received": { bg: "#F3C6C6", color: "#4A2C4D" },
@@ -247,6 +249,7 @@ export default function AdminApp({
     { id: "overview", label: "Overview" },
     { id: "orders", label: "Orders" },
     { id: "contacts", label: "Contacts" },
+    { id: "calendar", label: "Calendar" },
     { id: "finance", label: "Finance" },
     { id: "pricing", label: "Costs & pricing" },
     { id: "zones", label: "Delivery zones" },
@@ -471,6 +474,25 @@ export default function AdminApp({
             )}
             {(() => {
               const today = new Date().toISOString().slice(0, 10);
+              const todays = eventsInRange(store, today, today);
+              if (!todays.length) return null;
+              return (
+                <div className="rounded-2xl mb-7" style={{ background: "#fff", border: "2px solid #F3C6C6", padding: "16px 20px" }}>
+                  <p className="m-0 mb-2 font-extrabold text-[13px]" style={{ letterSpacing: "1px", color: "#4A2C4D" }}>TODAY&apos;S AGENDA</p>
+                  {todays.map((e) => (
+                    <div key={e.id} className="flex items-center gap-2.5 flex-wrap" style={{ padding: "3px 0" }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 3, background: EVENT_STYLE[e.type].bg, flexShrink: 0 }} />
+                      <span className="text-[14px] font-semibold">{e.title}</span>
+                      <span className="text-[12.5px] text-plum-soft">{e.subtitle}</span>
+                      <span style={{ flex: 1 }} />
+                      <button onClick={() => setTab("calendar")} className="cursor-pointer bg-cream border-0 rounded-full text-[12px] font-bold" style={{ padding: "5px 10px" }}>Calendar</button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+            {(() => {
+              const today = new Date().toISOString().slice(0, 10);
               const fu = followUpsDue(store, today);
               const anv = anniversaries(store, today);
               return (
@@ -581,6 +603,10 @@ export default function AdminApp({
         )}
 
         {/* CONTACTS (CRM) */}
+        {tab === "calendar" && (
+          <CalendarTab store={store} commit={commit} onOpenOrder={setSelectedOrderId} onOpenContact={() => setTab("contacts")} />
+        )}
+
         {tab === "contacts" && (
           <ContactsTab store={store} commit={commit} onDelete={deleteContact} />
         )}

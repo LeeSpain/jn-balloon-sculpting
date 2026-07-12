@@ -23,6 +23,11 @@ export interface Settings {
   // CRM outreach templates ({name}, {occasion}, {date} placeholders)
   emailTemplate: string;
   whatsappTemplate: string;
+  // Calendar / availability
+  maxDeliveriesPerDay: number;
+  workDayStart: string; // "09:00"
+  workDayEnd: string; // "17:00"
+  calendarToken: string; // secret for the iCal subscribe feed
   instagram: string;
   facebook: string;
   tiktok: string;
@@ -101,6 +106,8 @@ export type OrderStatus =
   | "Ready"
   | "Delivered";
 
+export type Assignee = "Jade" | "Nicole" | "Both";
+
 export interface Order {
   id: string;
   customer: string;
@@ -117,6 +124,18 @@ export interface Order {
   depositPaid?: number;
   stockTaken?: boolean;
   awaitingPayment?: boolean; // true until Stripe confirms payment via webhook
+  buildDate?: string; // when to build it (defaults to day-before, same-day for helium)
+  assignee?: Assignee; // who's on this order (delivery + build)
+}
+
+// Personal / blocked time on the calendar (school runs, holidays, days off).
+export interface CalendarBlock {
+  id: string;
+  title: string;
+  date: string; // ISO yyyy-mm-dd (the date, or the first occurrence if recurring)
+  kind: "blocked" | "personal"; // blocked = no deliveries that day; personal = info only
+  recurrence: "none" | "weekly"; // weekly = every week on that weekday
+  assignee?: Assignee;
 }
 
 export type ContactStatus =
@@ -140,6 +159,7 @@ export interface Contact {
   occasion: string; // most recent event type (e.g. "Birthday Arch")
   occasionDate: string; // most recent event date (ISO) — for anniversaries
   createdAt: string; // ISO
+  assignee?: Assignee; // who owns the follow-up
 }
 
 export interface Store {
@@ -155,6 +175,7 @@ export interface Store {
   zones: Zone[];
   orders: Order[];
   contacts: Contact[];
+  blocks: CalendarBlock[];
 }
 
 export interface PriceBreakdown {

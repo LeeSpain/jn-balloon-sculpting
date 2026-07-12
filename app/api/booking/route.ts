@@ -14,6 +14,7 @@ import { nextOrderId } from "@/lib/ids";
 import { sameOrigin, clientIp } from "@/lib/security";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { upsertContactFromOrder } from "@/lib/crm";
+import { isDeliveryAvailable } from "@/lib/calendar";
 import type { Order } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -91,6 +92,14 @@ export async function POST(req: Request) {
   const priced = priceProduct(store, product, size.mult);
   const zoneOk = !!zone && zone.fee != null;
   const dateOk = !!body.date && body.date >= minDate(store);
+  // Availability guard: a real booking can't land on a blocked or fully-booked day
+  // (defence-in-depth behind the picker, and against races/tampering).
+  if (body.kind === "book" && zoneOk && dateOk && !isDeliveryAvailable(store, body.date)) {
+    return NextResponse.json(
+      { error: "Sorry — that date has just filled up or isn't available. Please pick another." },
+      { status: 409 },
+    );
+  }
   const isBooking = body.kind === "book" && zoneOk && dateOk;
 
   const id = nextOrderId(store.orders.map((o) => o.id));

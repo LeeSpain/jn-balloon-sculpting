@@ -3,6 +3,7 @@
 // secret never reach the browser.
 import type { Store, DepositType, SiteImages } from "./types";
 import { priceProduct, minDate } from "./pricing";
+import { unavailableDates as computeUnavailable } from "./calendar";
 import { hasDatabase } from "./store";
 import { resolveStripeConfig } from "./stripeConfig";
 
@@ -67,6 +68,7 @@ export interface PublicData {
     tiktok: string;
   };
   minDate: string;
+  unavailableDates: string[]; // blocked or fully-booked days the picker must exclude
 }
 
 export function buildPublicData(store: Store): PublicData {
@@ -124,5 +126,6 @@ export function buildPublicData(store: Store): PublicData {
       tiktok: store.settings.tiktok,
     },
     minDate: minDate(store),
+    unavailableDates: computeUnavailable(store),
   };
 }
