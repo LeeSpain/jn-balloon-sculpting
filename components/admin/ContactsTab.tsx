@@ -170,10 +170,24 @@ export default function ContactsTab({
                     ))}
                   </div>
 
-                  {/* outreach + delete */}
+                  {/* outreach + delete — buttons (no declarative href), so they
+                      can ONLY fire on a deliberate click, never on focus/Enter/
+                      re-render/assistive-tech activation. */}
                   <div className="flex gap-2 flex-wrap mt-4 items-center">
-                    <a href={c.email ? mailtoLink(c, store.settings.emailTemplate) : undefined} onClick={(e) => { if (!c.email) e.preventDefault(); }} className="no-underline cursor-pointer bg-gold text-plum font-extrabold text-[13px] rounded-full" style={{ padding: "9px 16px", opacity: c.email ? 1 : 0.4 }}>✉ Email</a>
-                    <a href={c.phone ? waLink(c, store.settings.whatsappTemplate) : undefined} target="_blank" rel="noreferrer" onClick={(e) => { if (!c.phone) e.preventDefault(); }} className="no-underline cursor-pointer text-white font-extrabold text-[13px] rounded-full" style={{ padding: "9px 16px", background: "#25D366", opacity: c.phone ? 1 : 0.4 }}>WhatsApp</a>
+                    <button
+                      type="button"
+                      disabled={!c.email}
+                      onClick={() => { if (c.email) window.location.href = mailtoLink(c, store.settings.emailTemplate); }}
+                      className="cursor-pointer border-0 bg-gold text-plum font-extrabold text-[13px] rounded-full disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ padding: "9px 16px" }}
+                    >✉ Email</button>
+                    <button
+                      type="button"
+                      disabled={!c.phone}
+                      onClick={() => { if (c.phone) window.open(waLink(c, store.settings.whatsappTemplate), "_blank", "noopener,noreferrer"); }}
+                      className="cursor-pointer border-0 text-white font-extrabold text-[13px] rounded-full disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ padding: "9px 16px", background: "#25D366" }}
+                    >WhatsApp</button>
                     <span style={{ flex: 1 }} />
                     {confirmDelete === c.id ? (
                       <span className="flex gap-2 items-center text-[12.5px]">
