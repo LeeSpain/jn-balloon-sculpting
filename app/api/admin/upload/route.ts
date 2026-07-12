@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAuthed } from "@/lib/adminAuth";
-import { sameOrigin, rateLimit, clientIp } from "@/lib/security";
+import { sameOrigin, clientIp } from "@/lib/security";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { saveImage, extFromType } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
   if (!sameOrigin(req)) {
     return NextResponse.json({ error: "Bad origin." }, { status: 403 });
   }
-  if (!rateLimit(`upload:${clientIp(req)}`, 60, 10 * 60 * 1000)) {
+  if (!(await checkRateLimit(`upload:${clientIp(req)}`, 60, 10 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many uploads — try again shortly." }, { status: 429 });
   }
 

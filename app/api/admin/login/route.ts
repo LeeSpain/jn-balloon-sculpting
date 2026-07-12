@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { ADMIN_COOKIE, createSessionToken, verifyPassword, SESSION_MAX_AGE } from "@/lib/adminAuth";
-import { sameOrigin, rateLimit, clientIp } from "@/lib/security";
+import { ADMIN_COOKIE, createSessionToken, SESSION_MAX_AGE } from "@/lib/adminAuth";
+import { verifyPassword } from "@/lib/password";
+import { sameOrigin, clientIp } from "@/lib/security";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -8,8 +10,9 @@ export async function POST(req: Request) {
   if (!sameOrigin(req)) {
     return NextResponse.json({ error: "Bad origin." }, { status: 403 });
   }
-  // Throttle password guessing: 10 attempts / 5 min per IP.
-  if (!rateLimit(`login:${clientIp(req)}`, 10, 5 * 60 * 1000)) {
+  // Throttle password guessing: 10 attempts / 5 min per IP (durable when a DB is
+  // connected, so it holds across serverless instances).
+  if (!(await checkRateLimit(`login:${clientIp(req)}`, 10, 5 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many attempts — try again shortly." }, { status: 429 });
   }
 

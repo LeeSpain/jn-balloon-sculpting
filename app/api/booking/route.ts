@@ -11,7 +11,8 @@ import {
 import { serverStripeEnabled, bookingsLive } from "@/lib/publicData";
 import { notifyNewBooking } from "@/lib/notify";
 import { nextOrderId } from "@/lib/ids";
-import { sameOrigin, rateLimit, clientIp } from "@/lib/security";
+import { sameOrigin, clientIp } from "@/lib/security";
+import { checkRateLimit } from "@/lib/rateLimit";
 import type { Order } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Bad origin." }, { status: 403 });
   }
   // Throttle abuse of this public endpoint (it creates orders + Stripe sessions).
-  if (!rateLimit(`booking:${clientIp(req)}`, 12, 10 * 60 * 1000)) {
+  if (!(await checkRateLimit(`booking:${clientIp(req)}`, 12, 10 * 60 * 1000))) {
     return NextResponse.json(
       { error: "Too many requests — please try again in a few minutes." },
       { status: 429 },

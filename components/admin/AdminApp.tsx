@@ -392,8 +392,9 @@ export default function AdminApp({
             <ul className="m-0 text-[13.5px]" style={{ paddingLeft: 18, lineHeight: 1.7 }}>
               {!dbConnected && (
                 <li>
-                  <strong>Database not connected.</strong> Changes save for now but may not stick permanently until a
-                  database is added in Vercel (Storage → Create Database → Postgres). This is the one must-do before launch.
+                  <strong>Database not connected.</strong> Until a database is added in Vercel (Storage → Create
+                  Database → Postgres), changes can’t be saved on the live site — you’ll see a save error rather than
+                  losing edits silently. This is the one must-do before launch.
                 </li>
               )}
               {!blobConnected && (
