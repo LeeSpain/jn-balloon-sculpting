@@ -15,4 +15,8 @@ export interface StoreRepository {
   reset(): Promise<Store>;
   /** Permanently delete a single contact record (GDPR erasure). */
   deleteContact(id: string): Promise<void>;
+  /** Permanently delete a single order record (write() only upserts, so removal
+   *  needs its own call). Use for genuine junk/test data — real cancellations
+   *  should archive instead. */
+  deleteOrder(id: string): Promise<void>;
 }

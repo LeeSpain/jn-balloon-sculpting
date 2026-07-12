@@ -54,6 +54,10 @@ export interface Product {
   desc: string;
   recipe: Record<string, number>;
   image?: string; // optional product photo shown in the quote builder
+  // Manual price override for the Standard (×1) size. When set, this replaces the
+  // auto-calculated customer price; other size tiers scale it by their multiplier.
+  // Leave undefined to use the calculated price.
+  priceOverride?: number;
 }
 
 // Every fixed image slot on the site, editable from the admin Image Manager.
@@ -72,6 +76,29 @@ export interface Size {
   id: string;
   name: string;
   mult: number;
+}
+
+// Editable marketing copy for the public site. Every string here was previously
+// hardcoded in the homepage; the admin Site content tab now owns them so no
+// customer-visible headline, paragraph or contact detail requires a code change.
+export interface SiteCopy {
+  heroKicker: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  heroCtaPrimary: string;
+  heroCtaSecondary: string;
+  galleryTitle: string;
+  gallerySubtitle: string;
+  quoteKicker: string;
+  quoteTitle: string;
+  quoteSubtitle: string;
+  reviewsTitle: string;
+  aboutKicker: string;
+  aboutTitle: string;
+  aboutBody1: string;
+  aboutBody2: string;
+  footerTagline: string;
+  contactEmail: string;
 }
 
 export interface GalleryItem {
@@ -130,6 +157,11 @@ export interface Order {
   deliverer?: Assignee; // who's DELIVERING it (delivery event)
   acknowledged?: boolean; // triage: has the team seen & assigned this order?
   createdAt?: string; // ISO — when the order was placed (for the >24h waiting flag)
+  // Cancelled & archived: kept on record but excluded from the active pipeline,
+  // finance, calendar and availability. Reversible (restore). Distinct from a
+  // permanent delete, which removes the record entirely.
+  archived?: boolean;
+  archivedAt?: string; // ISO — when it was cancelled & archived
 }
 
 // Personal / blocked time on the calendar (school runs, holidays, days off).
@@ -180,11 +212,13 @@ export interface Store {
   orders: Order[];
   contacts: Contact[];
   blocks: CalendarBlock[];
+  copy: SiteCopy;
 }
 
 export interface PriceBreakdown {
   materials: number;
   labour: number;
   cost: number;
-  price: number;
+  price: number; // effective customer price (override if set, else calculated)
+  calculated: number; // auto-calculated price before any manual override
 }

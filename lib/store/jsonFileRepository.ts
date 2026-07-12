@@ -52,6 +52,12 @@ export class JsonFileRepository implements StoreRepository {
     await this.write(store);
   }
 
+  async deleteOrder(id: string): Promise<void> {
+    const store = await this.read();
+    store.orders = (store.orders || []).filter((o) => o.id !== id);
+    await this.write(store);
+  }
+
   async reset(): Promise<Store> {
     const fresh = seedStore();
     await this.write(fresh);

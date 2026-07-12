@@ -16,6 +16,7 @@ export default async function HomePage({
   const store = await getRepository().read();
   const data = buildPublicData(store);
   const img = data.images; // all site images come from the store (admin-managed)
+  const copy = data.copy; // all marketing copy comes from the store (admin-managed)
   const socials = [
     { name: "Instagram", url: data.settings.instagram },
     { name: "Facebook", url: data.settings.facebook },
@@ -33,7 +34,7 @@ export default async function HomePage({
       "Handcrafted balloon arches, garlands and centrepieces, delivered across Cambridgeshire by Jade & Nicole.",
     image: `${siteUrl}/opengraph-image`,
     url: siteUrl,
-    email: "hello@jnballoons.co.uk",
+    email: copy.contactEmail,
     areaServed: "Cambridgeshire, UK",
     address: { "@type": "PostalAddress", addressRegion: "Cambridgeshire", addressCountry: "GB" },
     ...(socials.length ? { sameAs: socials.map((s) => s.url) } : {}),
@@ -111,13 +112,13 @@ export default async function HomePage({
       >
         <div>
           <p className="m-0 mb-3.5 text-xs font-extrabold text-gold-ink" style={{ letterSpacing: "3px" }}>
-            CAMBRIDGESHIRE BASED
+            {copy.heroKicker}
           </p>
           <h1 className="font-display font-bold m-0 mb-[18px]" style={{ fontSize: "clamp(34px, 5vw, 52px)", lineHeight: 1.12 }}>
-            Handcrafted balloon art, delivered to your door
+            {copy.heroTitle}
           </h1>
           <p className="text-[17px] m-0 mb-[26px]" style={{ lineHeight: 1.6, maxWidth: "46ch" }}>
-            Arches, garlands and centrepieces for birthdays, weddings and every celebration in between — made by hand by Jade &amp; Nicole, and delivered ready to wow.
+            {copy.heroSubtitle}
           </p>
           <div className="flex gap-3.5 flex-wrap items-center">
             <a
@@ -125,10 +126,10 @@ export default async function HomePage({
               className="no-underline inline-flex items-center bg-coral-deep text-white font-extrabold text-base rounded-full"
               style={{ padding: "14px 28px", minHeight: 48, boxShadow: "0 4px 14px rgba(201,64,47,0.35)" }}
             >
-              Get an instant quote
+              {copy.heroCtaPrimary}
             </a>
             <a href="#gallery" className="no-underline inline-flex items-center font-bold text-[15px]" style={{ minHeight: 44, borderBottom: "2px solid #D4AF7A", paddingBottom: "2px" }}>
-              See our work
+              {copy.heroCtaSecondary}
             </a>
           </div>
         </div>
@@ -149,10 +150,10 @@ export default async function HomePage({
       {/* Gallery — cards open a popup; "Order this piece" jumps to the quote below */}
       <section id="gallery" className="max-w-site mx-auto" style={{ padding: "24px 20px 48px", scrollMarginTop: "80px" }}>
         <h2 className="font-display m-0 mb-1.5" style={{ fontSize: "clamp(26px, 3.5vw, 36px)" }}>
-          Recent creations
+          {copy.galleryTitle}
         </h2>
         <p className="m-0 mb-6 text-[15px] text-plum-soft">
-          Every piece is handmade to order — tap any favourite to take a closer look.
+          {copy.gallerySubtitle}
         </p>
         <GalleryShowcase data={data} />
       </section>
@@ -185,7 +186,7 @@ export default async function HomePage({
         <section style={{ background: "#F3C6C6" }}>
           <div className="max-w-site mx-auto" style={{ padding: "56px 20px" }}>
             <h2 className="font-display m-0 mb-6" style={{ fontSize: "clamp(26px, 3.5vw, 36px)" }}>
-              Kind words
+              {copy.reviewsTitle}
             </h2>
             <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))" }}>
               {data.reviews.map((r) => (
@@ -233,16 +234,16 @@ export default async function HomePage({
         </div>
         <div>
           <p className="m-0 mb-2.5 text-xs font-extrabold text-gold-ink" style={{ letterSpacing: "3px" }}>
-            MEET JADE &amp; NICOLE
+            {copy.aboutKicker}
           </p>
           <h2 className="font-display m-0 mb-4" style={{ fontSize: "clamp(26px, 3.5vw, 36px)" }}>
-            Two local mums, one big idea
+            {copy.aboutTitle}
           </h2>
           <p className="text-[15.5px] m-0 mb-3.5" style={{ lineHeight: 1.7 }}>
-            We&apos;re Jade and Nicole — friends, single mums, and the hands behind every balloon we deliver. What started as decorating our own children&apos;s parties in Huntingdon and Stilton became the thing people kept asking us to do for theirs.
+            {copy.aboutBody1}
           </p>
           <p className="text-[15.5px] m-0" style={{ lineHeight: 1.7 }}>
-            Every piece is built by us, in advance, with care — then delivered to your door anywhere in Cambridgeshire so all you have to do is enjoy the party.
+            {copy.aboutBody2}
           </p>
         </div>
       </section>
@@ -258,15 +259,15 @@ export default async function HomePage({
               BALLOON SCULPTING
             </p>
             <p className="text-[13.5px] m-0" style={{ opacity: 0.85, maxWidth: "34ch", lineHeight: 1.6 }}>
-              Handcrafted balloon art, delivered across Cambridgeshire. Huntingdon · Stilton · and everywhere in between.
+              {copy.footerTagline}
             </p>
           </div>
           <div className="flex flex-col gap-2.5">
             <p className="font-extrabold text-[13px] m-0" style={{ letterSpacing: "1px" }}>
               GET IN TOUCH
             </p>
-            <a href="mailto:hello@jnballoons.co.uk" className="text-[14px] no-underline" style={{ color: "#F3C6C6" }}>
-              hello@jnballoons.co.uk
+            <a href={`mailto:${copy.contactEmail}`} className="text-[14px] no-underline" style={{ color: "#F3C6C6" }}>
+              {copy.contactEmail}
             </a>
             <CopyButton
               hash="#quote"

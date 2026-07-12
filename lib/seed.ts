@@ -117,5 +117,28 @@ export function seedStore(): Store {
       : [],
     contacts: [],
     blocks: [],
+    copy: {
+      heroKicker: "CAMBRIDGESHIRE BASED",
+      heroTitle: "Handcrafted balloon art, delivered to your door",
+      heroSubtitle:
+        "Arches, garlands and centrepieces for birthdays, weddings and every celebration in between — made by hand by Jade & Nicole, and delivered ready to wow.",
+      heroCtaPrimary: "Get an instant quote",
+      heroCtaSecondary: "See our work",
+      galleryTitle: "Recent creations",
+      gallerySubtitle: "Every piece is handmade to order — tap any favourite to take a closer look.",
+      quoteKicker: "INSTANT QUOTE",
+      quoteTitle: "Build your quote in seconds",
+      quoteSubtitle: "Pick a piece, choose your colours, tell us where — your price appears instantly.",
+      reviewsTitle: "Kind words",
+      aboutKicker: "MEET JADE & NICOLE",
+      aboutTitle: "Two local mums, one big idea",
+      aboutBody1:
+        "We're Jade and Nicole — friends, single mums, and the hands behind every balloon we deliver. What started as decorating our own children's parties in Huntingdon and Stilton became the thing people kept asking us to do for theirs.",
+      aboutBody2:
+        "Every piece is built by us, in advance, with care — then delivered to your door anywhere in Cambridgeshire so all you have to do is enjoy the party.",
+      footerTagline:
+        "Handcrafted balloon art, delivered across Cambridgeshire. Huntingdon · Stilton · and everywhere in between.",
+      contactEmail: "hello@jnballoons.co.uk",
+    },
   };
 }

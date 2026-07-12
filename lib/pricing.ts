@@ -74,8 +74,12 @@ export function priceProduct(store: Store, product: Product, sizeMult = 1): Pric
   const mats = materialCost(store, product, sizeMult);
   const labour = product.buildHours * sizeMult * store.settings.labourRate;
   const cost = mats + labour;
-  const price = Math.ceil(cost * (1 + store.settings.markupPct / 100));
-  return { materials: round2(mats), labour: round2(labour), cost: round2(cost), price };
+  const calculated = Math.ceil(cost * (1 + store.settings.markupPct / 100));
+  // Manual override (if set) is the Standard-size price; other sizes scale it by
+  // their multiplier so tiers stay meaningful. Costs still reflect the real size.
+  const override = product.priceOverride;
+  const price = override != null && override >= 0 ? Math.round(override * sizeMult) : calculated;
+  return { materials: round2(mats), labour: round2(labour), cost: round2(cost), price, calculated };
 }
 
 export function zoneForPostcode(store: Store, postcode: string): Zone | null {

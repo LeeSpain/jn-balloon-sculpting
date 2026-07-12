@@ -11,5 +11,6 @@ export function hydrate(saved: Partial<Store> | null): Store {
     ...saved,
     settings: { ...defaults.settings, ...(saved.settings || {}) },
     images: { ...defaults.images, ...(saved.images || {}) },
+    copy: { ...defaults.copy, ...(saved.copy || {}) },
   };
 }

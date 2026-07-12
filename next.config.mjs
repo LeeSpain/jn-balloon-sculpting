@@ -31,6 +31,12 @@ const nextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
   },
+  // The homepage is force-dynamic so prices/availability reflect the latest admin
+  // edits. Disable the client Router Cache for dynamic pages too, so a soft
+  // navigation back to "/" never shows a stale quote instead of the new one.
+  experimental: {
+    staleTimes: { dynamic: 0 },
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

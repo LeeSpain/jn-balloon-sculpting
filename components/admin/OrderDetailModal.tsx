@@ -39,6 +39,9 @@ export default function OrderDetailModal({
   onStatusChange,
   onSetMaker,
   onSetDeliverer,
+  onArchive,
+  onRestore,
+  onDelete,
 }: {
   store: Store;
   order: Order | null;
@@ -46,6 +49,9 @@ export default function OrderDetailModal({
   onStatusChange: (id: string, status: OrderStatus) => void;
   onSetMaker: (id: string, who: Assignee) => void;
   onSetDeliverer: (id: string, who: Assignee) => void;
+  onArchive: (id: string) => void;
+  onRestore: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
   useEffect(() => {
     if (!order) return;
@@ -182,6 +188,51 @@ export default function OrderDetailModal({
               This order&apos;s profit &amp; loss
             </h3>
             <PLStatement fin={fin} />
+          </div>
+
+          {/* Danger zone — cancel/archive (safe, reversible) or permanent delete */}
+          <div className="mt-5" style={{ borderTop: "1px solid #F3C6C6", paddingTop: 16 }}>
+            {order.archived ? (
+              <div className="flex flex-wrap gap-2.5 items-center">
+                <span className="text-[13px] font-bold text-plum-soft" style={{ flex: 1, minWidth: 160 }}>
+                  This order is cancelled &amp; archived — kept on record, out of the active pipeline.
+                </span>
+                <button
+                  onClick={() => onRestore(order.id)}
+                  className="cursor-pointer border-0 rounded-full font-sans font-extrabold text-[13px]"
+                  style={{ background: "#E4F0E4", color: "#3c7a3c", padding: "10px 18px", minHeight: 44 }}
+                >
+                  Restore order
+                </button>
+                <button
+                  onClick={() => onDelete(order.id)}
+                  className="cursor-pointer border-0 rounded-full font-sans font-extrabold text-[13px]"
+                  style={{ background: "#FFE3DF", color: "#c14a3e", padding: "10px 18px", minHeight: 44 }}
+                >
+                  Delete permanently
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2.5 items-center">
+                <button
+                  onClick={() => onArchive(order.id)}
+                  className="cursor-pointer border-0 rounded-full font-sans font-extrabold text-[13px]"
+                  style={{ background: "#F2E7D8", color: "#8a6a1a", padding: "10px 18px", minHeight: 44 }}
+                >
+                  Cancel &amp; archive
+                </button>
+                <button
+                  onClick={() => onDelete(order.id)}
+                  className="cursor-pointer bg-transparent rounded-full font-sans font-bold text-[13px]"
+                  style={{ border: "2px solid #F3C6C6", color: "#c14a3e", padding: "9px 16px", minHeight: 44 }}
+                >
+                  Delete permanently
+                </button>
+                <span className="text-[12px] text-plum-soft" style={{ flex: 1, minWidth: 140 }}>
+                  Cancelling keeps the record; deleting removes it for good.
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>

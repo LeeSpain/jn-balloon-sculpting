@@ -1,7 +1,7 @@
 // Client-safe projection of the store for the public website.
 // Prices are computed on the server so material costs, markup and the Stripe
 // secret never reach the browser.
-import type { Store, DepositType, SiteImages } from "./types";
+import type { Store, DepositType, SiteImages, SiteCopy } from "./types";
 import { priceProduct, minDate } from "./pricing";
 import { unavailableDates as computeUnavailable } from "./calendar";
 import { hasDatabase } from "./store";
@@ -69,6 +69,7 @@ export interface PublicData {
   };
   minDate: string;
   unavailableDates: string[]; // blocked or fully-booked days the picker must exclude
+  copy: SiteCopy; // editable marketing copy for the public site
 }
 
 export function buildPublicData(store: Store): PublicData {
@@ -127,5 +128,6 @@ export function buildPublicData(store: Store): PublicData {
     },
     minDate: minDate(store),
     unavailableDates: computeUnavailable(store),
+    copy: store.copy,
   };
 }
