@@ -117,7 +117,7 @@ export default function ContactsTab({
 
       {/* Message templates */}
       <details className={card} style={{ padding: "14px 18px", marginBottom: 16 }}>
-        <summary className="cursor-pointer font-extrabold text-[14px]">Message templates (used by the email / WhatsApp buttons)</summary>
+        <summary className="cursor-pointer font-extrabold text-[14px]">✏️ Message wording — edit your email, WhatsApp &amp; review-request templates <span className="font-normal text-plum-soft">(tap to open)</span></summary>
         <div className="flex flex-col gap-3 mt-3" style={{ maxWidth: 620 }}>
           <label className={label} style={{ letterSpacing: "0.5px" }}>EMAIL TEMPLATE
             <textarea value={store.settings.emailTemplate} onChange={(e) => commit((d) => { d.settings.emailTemplate = e.target.value; })} rows={4} className={`${input} font-sans`} />

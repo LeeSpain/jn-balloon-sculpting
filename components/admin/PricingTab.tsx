@@ -99,6 +99,12 @@ export default function PricingTab({
                 stock
                 <input type="number" step="0.5" value={m.stock ?? 0} onChange={(e) => commit((d) => { d.materials[i].stock = parseFloat(e.target.value) || 0; })} className="rounded-lg font-bold bg-cream text-plum font-sans" style={{ border: `2px solid ${low ? "#FF6F61" : "#F3C6C6"}`, padding: "8px 10px", fontSize: 14, width: 62 }} />
               </span>
+              {/* Reorder threshold: the Overview "low stock" alert fires when stock
+                  drops to this or below. Without an editor here it was frozen. */}
+              <label className="flex items-center gap-1.5 text-xs font-bold text-plum-soft" title="Warn me on the dashboard when stock drops to this level or below">
+                warn at
+                <input type="number" step="0.5" min="0" value={m.lowAt ?? 0} onChange={(e) => commit((d) => { d.materials[i].lowAt = parseFloat(e.target.value) || 0; })} className="rounded-lg font-bold bg-cream text-plum font-sans border-2 border-blush" style={{ padding: "8px 10px", fontSize: 14, width: 62 }} />
+              </label>
               <button
                 onClick={() => { if (confirm(`Delete material “${m.name}”? It will be removed from any product recipes.`)) commit((d) => { d.materials.splice(i, 1); for (const p of d.products) delete p.recipe[m.id]; }); }}
                 className="cursor-pointer border-0 rounded-lg font-extrabold"
@@ -125,7 +131,7 @@ export default function PricingTab({
         >+ Add a product</button>
       </div>
       <p className="m-0 mb-3.5 text-plum-soft text-[13px]">
-        This is where you add, rename or remove the pieces customers can order — no developer needed. Tap a product&apos;s name to rename it, edit its recipe to re-cost instantly, or use <strong>Delete</strong> to retire it. Changes go live on the next refresh.
+        This is where you add, rename or remove the pieces customers can order — no developer needed. Tap a product&apos;s name to rename it, edit its recipe to re-cost instantly, or use <strong>Delete</strong> to retire it. Changes go live on the next refresh. <span className="text-gold-ink">Product photos are set in <strong>Site content → Product photos</strong>.</span>
       </p>
       <div className="grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
         {store.products.map((p, i) => (
