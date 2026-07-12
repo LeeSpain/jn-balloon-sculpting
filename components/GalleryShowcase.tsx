@@ -206,6 +206,16 @@ export default function GalleryShowcase({ data }: { data: PublicData }) {
                   </span>
                 )}
               </div>
+              {/* Questions? Ask us first — pre-fills the contact form with this piece. */}
+              <p className="m-0" style={{ marginTop: 12, fontSize: 13.5 }}>
+                <a
+                  href={product ? `/contact?product=${encodeURIComponent(product.id)}` : `/contact?piece=${encodeURIComponent(open.title)}`}
+                  className="font-extrabold no-underline"
+                  style={{ color: "#c9402f" }}
+                >
+                  Questions? Ask us first →
+                </a>
+              </p>
             </div>
           </div>
         </div>

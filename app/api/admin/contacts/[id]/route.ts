@@ -29,6 +29,16 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
       o.address = "";
     }
   }
+  // Scrub the person's PII from any contact-form enquiries too (kept anonymised
+  // for records, like orders).
+  for (const e of store.enquiries || []) {
+    if (keys.includes(normContact(e.email)) || (e.phone && keys.includes(normContact(e.phone)))) {
+      e.name = "[deleted]";
+      e.email = "";
+      e.phone = "";
+      e.message = "[removed]";
+    }
+  }
   store.contacts = (store.contacts || []).filter((c) => c.id !== id);
 
   await repo.write(store); // persists anonymised orders + remaining contacts

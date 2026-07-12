@@ -84,9 +84,16 @@ export default function SiteCopyEditor({
       </div>
 
       <p className="m-0 mb-2 text-[11px] font-extrabold text-gold" style={{ letterSpacing: "1px" }}>FOOTER &amp; CONTACT</p>
-      <div className="grid gap-2.5" style={gridStyle}>
+      <div className={grid} style={gridStyle}>
         <Field label="Contact email" value={copy.contactEmail} onChange={set("contactEmail")} ph="hello@jnballoons.co.uk" />
         <Field label="Footer tagline" value={copy.footerTagline} onChange={set("footerTagline")} area full />
+      </div>
+
+      <p className="m-0 mb-2 text-[11px] font-extrabold text-gold" style={{ letterSpacing: "1px" }}>CONTACT PAGE</p>
+      <div className="grid gap-2.5" style={gridStyle}>
+        <Field label="Heading" value={copy.contactTitle} onChange={set("contactTitle")} />
+        <Field label="Response time (e.g. within 24 hours)" value={copy.contactResponseTime} onChange={set("contactResponseTime")} />
+        <Field label="Intro paragraph" value={copy.contactIntro} onChange={set("contactIntro")} area full />
       </div>
     </div>
   );

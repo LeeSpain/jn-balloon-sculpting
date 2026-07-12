@@ -11,7 +11,7 @@
 // This keeps the StoreRepository interface (read/write/reset) intact while
 // making order creation safe under concurrency.
 import { Pool } from "pg";
-import type { Store, Order, Contact } from "../types";
+import type { Store, Order, Contact, Enquiry } from "../types";
 import { seedStore } from "../seed";
 import { hydrate } from "./hydrate";
 import type { StoreRepository } from "./repository";
@@ -51,6 +51,9 @@ function ensureSchema(): Promise<void> {
       await p.query(
         `CREATE TABLE IF NOT EXISTS store_contacts (id TEXT PRIMARY KEY, seq BIGSERIAL, data JSONB NOT NULL)`,
       );
+      await p.query(
+        `CREATE TABLE IF NOT EXISTS store_enquiries (id TEXT PRIMARY KEY, seq BIGSERIAL, data JSONB NOT NULL)`,
+      );
     })().catch((e) => {
       initPromise = null; // allow retry on a later request
       throw e;
@@ -78,17 +81,21 @@ export class PostgresRepository implements StoreRepository {
     const contacts = await p.query<{ data: Contact }>(
       `SELECT data FROM store_contacts ORDER BY seq DESC`,
     );
+    const enquiries = await p.query<{ data: Enquiry }>(
+      `SELECT data FROM store_enquiries ORDER BY seq DESC`,
+    );
     return hydrate({
       ...content.rows[0].data,
       orders: orders.rows.map((r) => r.data),
       contacts: contacts.rows.map((r) => r.data),
+      enquiries: enquiries.rows.map((r) => r.data),
     });
   }
 
   async write(store: Store): Promise<void> {
     await ensureSchema();
     const p = getPool();
-    const { orders, contacts, ...content } = store;
+    const { orders, contacts, enquiries, ...content } = store;
     await p.query(
       `INSERT INTO store_content (id, data) VALUES (1, $1::jsonb)
        ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
@@ -110,6 +117,13 @@ export class PostgresRepository implements StoreRepository {
         [c.id, JSON.stringify(c)],
       );
     }
+    for (const e of enquiries || []) {
+      await p.query(
+        `INSERT INTO store_enquiries (id, data) VALUES ($1, $2::jsonb)
+         ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
+        [e.id, JSON.stringify(e)],
+      );
+    }
   }
 
   async deleteContact(id: string): Promise<void> {
@@ -129,6 +143,7 @@ export class PostgresRepository implements StoreRepository {
     const p = getPool();
     await p.query(`TRUNCATE store_orders`);
     await p.query(`TRUNCATE store_contacts`);
+    await p.query(`TRUNCATE store_enquiries`);
     const fresh = seedStore();
     await this.write(fresh);
     return fresh;
