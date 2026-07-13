@@ -115,16 +115,20 @@ export default function CalendarTab({
 
   const EventChip = ({ e, compact }: { e: CalEvent; compact?: boolean }) => {
     const s = EVENT_STYLE[e.type];
+    // Delivered orders render as completed: muted grey with a ✓, so upcoming work
+    // stands out from what's already done.
+    const bg = e.done ? "#E7E2E9" : s.bg;
+    const fg = e.done ? "#8a7d8c" : s.fg;
     return (
       <div
         draggable
         onDragStart={(ev) => ev.dataTransfer.setData("text/plain", JSON.stringify(e))}
         onClick={() => openEvent(e)}
-        title={`${TYPE_LABEL[e.type]}: ${e.title} — ${e.subtitle}`}
+        title={`${e.done ? "Done — " : ""}${TYPE_LABEL[e.type]}: ${e.title} — ${e.subtitle}`}
         className="cursor-pointer rounded-md truncate"
-        style={{ background: s.bg, color: s.fg, fontSize: compact ? 10.5 : 12, fontWeight: 700, padding: compact ? "1px 5px" : "3px 8px", marginBottom: 2 }}
+        style={{ background: bg, color: fg, fontSize: compact ? 10.5 : 12, fontWeight: 700, padding: compact ? "1px 5px" : "3px 8px", marginBottom: 2 }}
       >
-        {e.title}{e.assignee ? ` · ${e.assignee[0]}` : ""}
+        {e.done ? "✓ " : ""}{e.title}{e.assignee ? ` · ${e.assignee[0]}` : ""}
       </div>
     );
   };
@@ -267,10 +271,12 @@ function DayDetail({ store, date, events, onOpen, onAssign }: { store: Store; da
     <div className="flex flex-col gap-2">
       {events.map((e) => {
         const s = EVENT_STYLE[e.type];
+        const pillBg = e.done ? "#E7E2E9" : s.bg;
+        const pillFg = e.done ? "#8a7d8c" : s.fg;
         return (
-          <div key={e.id} style={{ padding: "7px 10px", borderRadius: 10, background: "#FBF7F2", borderLeft: `4px solid ${s.bg}` }}>
+          <div key={e.id} style={{ padding: "7px 10px", borderRadius: 10, background: "#FBF7F2", borderLeft: `4px solid ${pillBg}`, opacity: e.done ? 0.75 : 1 }}>
             <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="text-[10px] font-extrabold rounded-full" style={{ background: s.bg, color: s.fg, padding: "2px 8px" }}>{e.type === "personal" ? "PERSONAL" : e.type.toUpperCase()}</span>
+              <span className="text-[10px] font-extrabold rounded-full" style={{ background: pillBg, color: pillFg, padding: "2px 8px" }}>{e.done ? "✓ DONE" : e.type === "personal" ? "PERSONAL" : e.type.toUpperCase()}</span>
               <span className="flex-1 min-w-[140px]">
                 <span className="font-bold text-[14px] cursor-pointer" onClick={() => onOpen(e)}>{e.title}</span>
                 {e.subtitle && <span className="text-[12.5px] text-plum-soft"> · {e.subtitle}</span>}

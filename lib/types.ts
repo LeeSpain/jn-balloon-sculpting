@@ -23,6 +23,7 @@ export interface Settings {
   // CRM outreach templates ({name}, {occasion}, {date} placeholders)
   emailTemplate: string;
   whatsappTemplate: string;
+  reviewTemplate: string; // pre-filled review request sent when an order is delivered
   // Calendar / availability
   maxDeliveriesPerDay: number;
   workDayStart: string; // "09:00"

@@ -20,7 +20,8 @@ import CalendarTab from "./CalendarTab";
 import TriageBanner from "./TriageBanner";
 import { eventsInRange, EVENT_STYLE, unacknowledgedOrders, makerOf, delivererOf, personOnOrder } from "@/lib/calendar";
 import type { Assignee } from "@/lib/types";
-import { followUpsDue, anniversaries, prettyDate as crmPretty, normContact, ordersForContact } from "@/lib/crm";
+import { followUpsDue, anniversaries, prettyDate as crmPretty, normContact, ordersForContact, findContact, fillTemplate } from "@/lib/crm";
+import { toIntlDigits } from "@/lib/phone";
 
 // Downscale a chosen image on the client and return a compressed Blob. Vector
 // and animated formats are passed through untouched. Photos become JPEG; logos
@@ -103,7 +104,8 @@ export default function AdminApp({
   const [newTheme, setNewTheme] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [jobFilter, setJobFilter] = useState<"all" | "Jade" | "Nicole">("all"); // Orders "my jobs" filter
-  const [orderView, setOrderView] = useState<"active" | "cancelled">("active"); // Active vs Cancelled orders
+  const [orderView, setOrderView] = useState<"active" | "delivered" | "cancelled">("active"); // Active / Delivered / Cancelled
+  const [reviewPrompt, setReviewPrompt] = useState<string | null>(null); // orderId just marked Delivered — offer a review request
   // Pending destructive action awaiting confirmation (archive/restore/delete).
   const [confirmAction, setConfirmAction] = useState<{ kind: "archive" | "delete"; orderId: string } | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -317,6 +319,10 @@ export default function AdminApp({
     return o.price + (o.delivery || 0) - materials - deliveryCost;
   }
   function setStatus(orderId: string, next: OrderStatus) {
+    // Detect the moment an order first becomes Delivered so we can offer a review
+    // request — delivered-and-delighted is the best time to ask.
+    const before = store.orders.find((x) => x.id === orderId);
+    const becomingDelivered = next === "Delivered" && !!before && before.status !== "Delivered";
     commit((d) => {
       const o = d.orders.find((x) => x.id === orderId);
       if (!o) return;
@@ -337,9 +343,15 @@ export default function AdminApp({
         if (c) {
           const delivered = ordersForContact(d, c).filter((x) => x.status === "Delivered").length;
           c.status = delivered >= 2 ? "Repeat customer" : "Delivered";
+          // Post-delivery value: remember what this order was for, so it feeds the
+          // outreach templates and next year's anniversaries-coming-up nudge.
+          const prod = d.products.find((p) => p.id === o.product);
+          if (prod) c.occasion = prod.name;
+          c.occasionDate = o.date;
         }
       }
     });
+    if (becomingDelivered) setReviewPrompt(orderId);
   }
 
   // ---- triage: making / delivering / acknowledge ----
@@ -433,7 +445,10 @@ export default function AdminApp({
     .slice()
     .filter((o) => jobFilter === "all" || personOnOrder(o, jobFilter))
     .sort((a, b) => a.date.localeCompare(b.date));
-  const orderRows = jobRows.filter((o) => !o.archived);
+  // Active = live pipeline (not delivered, not cancelled) and the default view.
+  // Delivered = complete but still counted in Finance/CRM. Cancelled = archived.
+  const activeRows = jobRows.filter((o) => !o.archived && o.status !== "Delivered");
+  const deliveredRows = jobRows.filter((o) => !o.archived && o.status === "Delivered");
   const archivedRows = jobRows.filter((o) => o.archived);
 
   return (
@@ -711,7 +726,7 @@ export default function AdminApp({
             </div>
             <div className="flex gap-2 items-center flex-wrap mb-5">
               <span className="text-[12px] font-extrabold text-plum-soft" style={{ letterSpacing: "0.5px" }}>SHOW:</span>
-              {([["active", `Active (${orderRows.length})`], ["cancelled", `Cancelled (${archivedRows.length})`]] as const).map(([v, lbl]) => (
+              {([["active", `Active (${activeRows.length})`], ["delivered", `Delivered (${deliveredRows.length})`], ["cancelled", `Cancelled (${archivedRows.length})`]] as const).map(([v, lbl]) => (
                 <button
                   key={v}
                   onClick={() => setOrderView(v)}
@@ -730,7 +745,7 @@ export default function AdminApp({
             </div>
             {orderView === "active" && (
             <div className="flex flex-col gap-3">
-              {orderRows.map((o) => {
+              {activeRows.map((o) => {
                 const profit = orderProfit(o);
                 return (
                   <div
@@ -796,10 +811,40 @@ export default function AdminApp({
                   </div>
                 );
               })}
-              {orderRows.length === 0 && (
+              {activeRows.length === 0 && (
                 <p className="m-0 text-plum-soft text-[14px]">No active orders{jobFilter !== "all" ? ` for ${jobFilter}` : ""}.</p>
               )}
             </div>
+            )}
+
+            {/* Delivered orders — complete, but still fully counted in Finance and
+                the customer's CRM history. Kept here for looking things up. */}
+            {orderView === "delivered" && (
+              <div className="flex flex-col gap-2.5">
+                <p className="m-0 mb-1 text-[13px] text-plum-soft">Delivered orders are complete. They stay counted in Finance and each customer&apos;s contact history &amp; total spent, and feed next year&apos;s anniversary nudges. Tap one to view or reopen it.</p>
+                {deliveredRows.map((o) => (
+                  <div key={o.id} onClick={() => setSelectedOrderId(o.id)} className={`${card} jn-click flex flex-wrap gap-3 items-center`} style={{ padding: "14px 18px", cursor: "pointer" }}>
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <p className="m-0 font-bold text-[14.5px] flex items-center gap-1.5">
+                        {o.customer}
+                        <span className="text-[10px] font-extrabold rounded-full" style={{ background: "#C6F3D0", color: "#2f6b3a", padding: "1px 8px", letterSpacing: "0.5px" }}>✓ DELIVERED</span>
+                      </p>
+                      <p className="mt-0.5 mb-0 text-[12.5px] text-plum-soft">{o.id} · {productById(o.product)?.name ?? o.product} · {prettyDate(o.date)} · {orderTotal(o)}</p>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setReviewPrompt(o.id); }}
+                      title="Ask this customer for a review"
+                      className="cursor-pointer border-0 rounded-full font-sans font-bold text-[12.5px]"
+                      style={{ background: "#F3E4C6", color: "#8a6a1a", padding: "9px 14px", minHeight: 40 }}
+                    >
+                      ★ Ask for a review
+                    </button>
+                  </div>
+                ))}
+                {deliveredRows.length === 0 && (
+                  <p className="m-0 text-plum-soft text-[14px]">No delivered orders yet{jobFilter !== "all" ? ` for ${jobFilter}` : ""}.</p>
+                )}
+              </div>
             )}
 
             {/* Cancelled / archived orders — kept on record, restorable, deletable */}
@@ -969,9 +1014,9 @@ export default function AdminApp({
                       <input type="file" accept="image/*" onChange={(e) => { changeGalleryPhoto(i, e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} />
                     </label>
                     <div className="flex gap-1.5">
-                      <button onClick={() => commit((d) => { if (i > 0) [d.gallery[i - 1], d.gallery[i]] = [d.gallery[i], d.gallery[i - 1]]; })} className="cursor-pointer border-0 bg-cream rounded-lg font-extrabold" style={{ padding: "9px 12px", minHeight: 40 }}>↑</button>
-                      <button onClick={() => commit((d) => { if (i < d.gallery.length - 1) [d.gallery[i + 1], d.gallery[i]] = [d.gallery[i], d.gallery[i + 1]]; })} className="cursor-pointer border-0 bg-cream rounded-lg font-extrabold" style={{ padding: "9px 12px", minHeight: 40 }}>↓</button>
-                      <button onClick={() => commit((d) => { d.gallery.splice(i, 1); })} className="cursor-pointer border-0 rounded-lg font-extrabold" style={{ background: "#FFE3DF", color: "#c14a3e", padding: "9px 12px", minHeight: 40 }}>✕</button>
+                      <button title="Move earlier" aria-label="Move earlier" onClick={() => commit((d) => { if (i > 0) [d.gallery[i - 1], d.gallery[i]] = [d.gallery[i], d.gallery[i - 1]]; })} className="cursor-pointer border-0 bg-cream rounded-lg font-extrabold" style={{ padding: "9px 12px", minHeight: 40 }}>↑</button>
+                      <button title="Move later" aria-label="Move later" onClick={() => commit((d) => { if (i < d.gallery.length - 1) [d.gallery[i + 1], d.gallery[i]] = [d.gallery[i], d.gallery[i + 1]]; })} className="cursor-pointer border-0 bg-cream rounded-lg font-extrabold" style={{ padding: "9px 12px", minHeight: 40 }}>↓</button>
+                      <button title="Delete this gallery piece" aria-label="Delete this gallery piece" onClick={() => { if (confirm("Remove this piece from the gallery?")) commit((d) => { d.gallery.splice(i, 1); }); }} className="cursor-pointer border-0 rounded-lg font-extrabold" style={{ background: "#FFE3DF", color: "#c14a3e", padding: "9px 12px", minHeight: 40 }}>✕</button>
                     </div>
                   </div>
 
@@ -1030,7 +1075,7 @@ export default function AdminApp({
                   <input value={r.text} onChange={(e) => commit((d) => { d.reviews[i].text = e.target.value; })} placeholder="Review text" className="rounded-lg bg-cream border-2 border-blush font-sans" style={{ flex: "2 1 260px", padding: "9px 12px", fontSize: "13.5px" }} />
                   <input value={r.name} onChange={(e) => commit((d) => { d.reviews[i].name = e.target.value; })} placeholder="Name" className="rounded-lg bg-cream border-2 border-blush font-bold font-sans" style={{ flex: "1 1 110px", padding: "9px 12px", fontSize: "13.5px" }} />
                   <input value={r.event} onChange={(e) => commit((d) => { d.reviews[i].event = e.target.value; })} placeholder="Event, town" className="rounded-lg bg-cream border-2 border-blush font-sans" style={{ flex: "1 1 140px", padding: "9px 12px", fontSize: "13.5px" }} />
-                  <button onClick={() => commit((d) => { d.reviews.splice(i, 1); })} className="cursor-pointer border-0 rounded-lg font-extrabold" style={{ background: "#FFE3DF", color: "#c14a3e", padding: "9px 12px", minHeight: 40 }}>✕</button>
+                  <button title="Delete this review" aria-label="Delete this review" onClick={() => commit((d) => { d.reviews.splice(i, 1); })} className="cursor-pointer border-0 rounded-lg font-extrabold" style={{ background: "#FFE3DF", color: "#c14a3e", padding: "9px 12px", minHeight: 40 }}>✕</button>
                 </div>
               ))}
             </div>
@@ -1041,7 +1086,7 @@ export default function AdminApp({
               {store.themes.map((t, i) => (
                 <span key={t} className="flex items-center gap-2 bg-white rounded-full font-bold text-[13.5px]" style={{ border: "2px solid #F3C6C6", padding: "8px 8px 8px 16px" }}>
                   {t}
-                  <button onClick={() => commit((d) => { d.themes.splice(i, 1); })} className="cursor-pointer border-0 rounded-full font-extrabold" style={{ background: "#FFE3DF", color: "#c14a3e", width: 26, height: 26 }}>✕</button>
+                  <button title={`Remove the “${t}” theme`} aria-label={`Remove the ${t} theme`} onClick={() => commit((d) => { d.themes.splice(i, 1); })} className="cursor-pointer border-0 rounded-full font-extrabold" style={{ background: "#FFE3DF", color: "#c14a3e", width: 26, height: 26 }}>✕</button>
                 </span>
               ))}
             </div>
@@ -1145,7 +1190,47 @@ export default function AdminApp({
         }}
       />
 
+      {/* Ask-for-a-review prompt — fires when an order is marked Delivered */}
+      {reviewPrompt && (() => {
+        const o = store.orders.find((x) => x.id === reviewPrompt);
+        return o ? <ReviewPromptModal store={store} order={o} onClose={() => setReviewPrompt(null)} /> : null;
+      })()}
+
       <style>{`.jn-click:hover { box-shadow: 0 6px 18px rgba(74,44,77,0.14); transform: translateY(-1px); transition: box-shadow .12s, transform .12s; }`}</style>
+    </div>
+  );
+}
+
+// Shown the moment an order is marked Delivered: offer a one-tap review request
+// via WhatsApp or email, pre-filled from the editable review template. Reviews are
+// this business's marketing engine, and delivered-and-delighted is the time to ask.
+function ReviewPromptModal({ store, order, onClose }: { store: Store; order: Order; onClose: () => void }) {
+  const contact = findContact(store, order.phone) || (order.email ? findContact(store, order.email) : null);
+  const name = (contact?.name || order.customer).replace(" (custom enquiry)", "");
+  const productName = store.products.find((p) => p.id === order.product)?.name || order.product;
+  // fillTemplate only reads name/occasion/occasionDate; synthesise a contact-shaped
+  // object from the order when there isn't a linked contact yet so {name}/{occasion}
+  // still resolve.
+  const forFill = (contact ?? { name, occasion: productName, occasionDate: order.date }) as unknown as Parameters<typeof fillTemplate>[1];
+  const tpl = store.settings.reviewTemplate || "";
+  const msg = fillTemplate(tpl, forFill);
+  const email = contact?.email || order.email || "";
+  const phone = contact?.phone || order.phone || "";
+  const digits = phone ? toIntlDigits(phone) : "";
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(74,44,77,0.5)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={onClose}>
+      <div className="bg-white rounded-3xl" style={{ padding: 24, maxWidth: 440, width: "100%" }} onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-display m-0 mb-1" style={{ fontSize: 21 }}>Delivered! 🎈 Ask {name} for a review?</h3>
+        <p className="m-0 mb-3 text-[13.5px] text-plum-soft">Reviews are how new families find you — and right now is the perfect moment. This opens a pre-filled message you can tweak before sending.</p>
+        <p className="m-0 mb-4 text-[13px] text-plum" style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, background: "#FBF7F2", borderRadius: 12, padding: "12px 14px" }}>{msg}</p>
+        <div className="flex gap-2 flex-wrap items-center">
+          <button type="button" disabled={!digits} onClick={() => { if (digits) window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer"); }} className="cursor-pointer border-0 text-white font-extrabold text-[13px] rounded-full disabled:opacity-40 disabled:cursor-not-allowed" style={{ padding: "10px 18px", minHeight: 44, background: "#25D366" }}>WhatsApp</button>
+          <button type="button" disabled={!email} onClick={() => { if (email) window.location.href = `mailto:${email}?subject=${encodeURIComponent("How did we do? 🎈")}&body=${encodeURIComponent(msg)}`; }} className="cursor-pointer border-0 bg-gold text-plum font-extrabold text-[13px] rounded-full disabled:opacity-40 disabled:cursor-not-allowed" style={{ padding: "10px 18px", minHeight: 44 }}>✉ Email</button>
+          <span style={{ flex: 1 }} />
+          <button onClick={onClose} className="cursor-pointer bg-cream border-0 font-bold text-[13px] rounded-full" style={{ padding: "10px 18px", minHeight: 44 }}>Not now</button>
+        </div>
+        <p className="m-0 mt-3 text-[11.5px] text-plum-soft">Edit the wording anytime in Contacts → Message templates (add your Google review link there).</p>
+      </div>
     </div>
   );
 }
