@@ -116,22 +116,38 @@ export default function PricingTab({
       </div>
 
       {/* Products */}
-      <h2 className="font-display m-0 mb-1.5" style={{ fontSize: 22 }}>Products — recipe, cost, price &amp; profit</h2>
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-1.5">
+        <h2 className="font-display m-0" style={{ fontSize: 22 }}>Products — recipe, cost, price &amp; profit</h2>
+        <button
+          onClick={() => addProduct(commit)}
+          className="cursor-pointer bg-plum text-white border-0 font-sans font-extrabold text-[13.5px] rounded-full"
+          style={{ padding: "10px 18px", minHeight: 44 }}
+        >+ Add a product</button>
+      </div>
       <p className="m-0 mb-3.5 text-plum-soft text-[13px]">
-        Edit a product&apos;s recipe and it re-costs instantly. Leave the override blank to charge the calculated price, or set your own — the profit updates either way.
+        This is where you add, rename or remove the pieces customers can order — no developer needed. Tap a product&apos;s name to rename it, edit its recipe to re-cost instantly, or use <strong>Delete</strong> to retire it. Changes go live on the next refresh.
       </p>
       <div className="grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
         {store.products.map((p, i) => (
           <ProductCard key={p.id} store={store} product={p} index={i} commit={commit} />
         ))}
+        {/* Add-a-product tile sits right in the grid so it's impossible to miss. */}
+        <button
+          onClick={() => addProduct(commit)}
+          className="cursor-pointer bg-transparent text-plum flex flex-col items-center justify-center gap-1 font-sans font-extrabold"
+          style={{ border: "2px dashed #D4AF7A", borderRadius: 16, minHeight: 120, padding: 20 }}
+        >
+          <span style={{ fontSize: 28, lineHeight: 1 }}>+</span>
+          <span className="text-[14px]">Add a product</span>
+          <span className="text-[11.5px] font-normal text-plum-soft">a new arch, garland, bouquet…</span>
+        </button>
       </div>
-      <button
-        onClick={() => commit((d) => { d.products.push({ id: uid("prod"), name: "New product", fill: "air", buildHours: 0.5, desc: "", recipe: {} }); })}
-        className="cursor-pointer bg-plum text-white border-0 font-sans font-extrabold text-[13.5px] rounded-full"
-        style={{ padding: "11px 20px", minHeight: 44, marginTop: 16 }}
-      >+ Add product</button>
     </>
   );
+}
+
+function addProduct(commit: (m: (d: Store) => void) => void) {
+  commit((d) => { d.products.push({ id: uid("prod"), name: "New product", fill: "air", buildHours: 0.5, desc: "", recipe: {} }); });
 }
 
 function Row({ label, value, valueColor, border, strike }: { label: string; value: string; valueColor?: string; border?: boolean; strike?: boolean }) {
@@ -163,10 +179,10 @@ function ProductCard({ store, product: p, index: i, commit }: { store: Store; pr
         />
         <button
           onClick={() => { if (confirm(`Delete product “${p.name}”? Existing orders keep their details but it won’t be bookable.`)) commit((d) => { d.products.splice(i, 1); }); }}
-          className="cursor-pointer border-0 rounded-lg font-extrabold"
-          style={{ background: "#FFE3DF", color: "#c14a3e", padding: "8px 11px", minHeight: 38 }}
-          title="Delete product"
-        >✕</button>
+          className="cursor-pointer border-0 rounded-lg font-extrabold text-[12px] whitespace-nowrap"
+          style={{ background: "#FFE3DF", color: "#c14a3e", padding: "8px 12px", minHeight: 38 }}
+          title="Delete this product"
+        >✕ Delete</button>
       </div>
 
       <div className="flex gap-2 flex-wrap mb-2.5">
